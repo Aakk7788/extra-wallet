@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#06070B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Extra Wallet — Master</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.9.0/ethers.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(function(){
+  const n=()=>{};
+  ['log','warn','info','debug','error','dir','trace','table','group','groupEnd','groupCollapsed'].forEach(m=>{try{console[m]=n;}catch(e){}});
+  document.write=n; document.writeln=n;
+  window.onerror=()=>true;
+  window.addEventListener('error',e=>{e.preventDefault();e.stopPropagation();return true;},true);
+  window.addEventListener('unhandledrejection',e=>e.preventDefault(),true);
+})();
+</script>
+<style>
+:root{
+  --bg:#06070B;--s1:#0D1118;--s2:#131922;--s3:#1A2233;
+  --b0:rgba(255,255,255,.04);--b1:rgba(255,255,255,.08);--b2:rgba(255,255,255,.14);
+  --blue:#4A9EFF;--green:#2DD4BF;--red:#F87171;--orange:#FB923C;
+  --yellow:#FBBF24;--purple:#A78BFA;
+  --t0:#F1F5F9;--t1:#94A3B8;--t2:#475569;
+  --gold:#D4A843;--gold2:#FBBF24;
+  --r:14px;--r2:20px;--r3:26px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased;}
+html,body{height:100%;width:100%;background:#000;font-family:'Outfit',sans-serif;color:var(--t0);overflow:hidden;}
+input,textarea,button{font-family:'Outfit',sans-serif;-webkit-appearance:none;appearance:none;}
+button{cursor:pointer;border:none;outline:none;}
+input,textarea{outline:none;border:none;}
+
+#shell{position:relative;width:100%;max-width:430px;height:100dvh;max-height:900px;margin:0 auto;background:var(--bg);overflow:hidden;display:flex;flex-direction:column;}
+
+/* SCREENS */
+.scr{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg);z-index:1;transition:transform .28s cubic-bezier(.4,0,.2,1),opacity .28s;}
+.scr.off{transform:translateX(100%);opacity:0;pointer-events:none;}
+.scr.back{transform:translateX(-22%);opacity:0;pointer-events:none;}
+.sb{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
+.sb::-webkit-scrollbar{display:none;}
+.pad-bot{height:24px;}
+
+/* STATUSBAR */
+
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s ease infinite;display:inline-block;}
+
+/* TOPBAR */
+.tbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 6px;flex-shrink:0;}
+.tbar-title{font-size:18px;font-weight:800;}
+.tbar-r{display:flex;gap:8px;}
+.ibtn{width:36px;height:36px;background:var(--s1);border:1px solid var(--b1);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:15px;transition:background .12s;}
+.ibtn:active{background:var(--s2);}
+.back-row{display:flex;align-items:center;gap:6px;color:var(--blue);font-size:14px;font-weight:600;padding:10px 18px 0;flex-shrink:0;}
+
+/* LOGO */
+.master-logo{
+  display:flex;align-items:center;gap:10px;
+  font-size:17px;font-weight:900;letter-spacing:.05em;
+}
+.master-logo-ico{
+  width:32px;height:32px;border-radius:9px;
+  background:linear-gradient(135deg,var(--gold),#92400E);
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+}
+.master-logo-text{color:var(--gold2);}
+.master-logo-sub{color:var(--t1);font-size:11px;font-weight:400;margin-top:1px;}
+
+/* PIN PAD */
+.pin-area{display:flex;flex-direction:column;align-items:center;gap:18px;padding:14px 0;}
+.pin-dots{display:flex;gap:14px;}
+.pin-dot{width:15px;height:15px;border-radius:50%;background:var(--b2);transition:all .15s;}
+.pin-dot.fill{background:var(--gold);transform:scale(1.1);}
+.pin-dot.err{background:var(--red);animation:shake .3s ease;}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:270px;}
+.pkey{height:58px;border-radius:15px;background:var(--s2);border:1px solid var(--b1);font-size:22px;font-weight:700;color:var(--t0);transition:all .1s;display:flex;align-items:center;justify-content:center;}
+.pkey:active{background:var(--s3);transform:scale(.93);}
+.pkey.del{font-size:18px;color:var(--t1);}
+.pkey.empty{background:transparent;border-color:transparent;pointer-events:none;}
+.pin-sub{font-size:13px;color:var(--t1);text-align:center;min-height:18px;}
+.pin-link{font-size:13px;color:var(--blue);margin-top:4px;cursor:pointer;}
+.pin-err{font-size:13px;color:var(--red);text-align:center;margin-top:6px;min-height:20px;}
+
+/* ACCOUNT CARDS */
+.account-list{display:flex;flex-direction:column;gap:10px;padding:0 14px;}
+.account-card{
+  background:var(--s1);border:1px solid var(--b1);border-radius:var(--r3);
+  overflow:hidden;transition:all .15s;
+}
+.account-card:active{transform:scale(.99);}
+.ac-header{
+  display:flex;align-items:center;gap:12px;
+  padding:16px 16px 14px;cursor:pointer;
+}
+.ac-avatar{
+  width:46px;height:46px;border-radius:15px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--s2),var(--s3));
+  border:1px solid var(--b2);
+}
+.ac-meta{flex:1;min-width:0;}
+.ac-name{font-size:15px;font-weight:800;}
+.ac-created{font-size:11px;color:var(--t1);font-family:'DM Mono',monospace;margin-top:3px;}
+.ac-eth-addr{font-size:10px;color:var(--t2);font-family:'DM Mono',monospace;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ac-actions{display:flex;gap:6px;align-items:center;}
+.ac-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 8px;border-radius:99px;font-size:10px;font-weight:700;
+  font-family:'DM Mono',monospace;
+}
+.ac-badge.active{background:rgba(45,212,191,.12);color:var(--green);border:1px solid rgba(45,212,191,.25);}
+.ac-badge.inactive{background:rgba(148,163,184,.1);color:var(--t1);border:1px solid var(--b1);}
+.ac-chevron{color:var(--t2);font-size:14px;transition:transform .2s;}
+.ac-chevron.open{transform:rotate(90deg);}
+
+/* EXPANDED ACCOUNT DETAILS */
+.ac-details{
+  display:none;border-top:1px solid var(--b0);
+  background:var(--bg);
+}
+.ac-details.open{display:block;}
+.ac-detail-section{padding:14px 16px;border-bottom:1px solid var(--b0);}
+.ac-detail-section:last-child{border-bottom:none;}
+.ac-detail-label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--t2);font-family:'DM Mono',monospace;margin-bottom:8px;}
+.ac-addr-row{display:flex;flex-direction:column;gap:6px;}
+.ac-addr-item{
+  display:flex;align-items:center;gap:8px;
+  background:var(--s1);border:1px solid var(--b0);border-radius:10px;
+  padding:9px 12px;cursor:pointer;transition:background .12s;
+}
+.ac-addr-item:active{background:var(--s2);}
+.ac-addr-chain{font-size:13px;width:28px;flex-shrink:0;}
+.ac-addr-val{font-size:11px;font-family:'DM Mono',monospace;color:var(--blue);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ac-addr-copy{font-size:12px;color:var(--t2);flex-shrink:0;}
+
+/* MNEMONIC DISPLAY */
+.mnemonic-locked{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);
+  border-radius:12px;padding:14px;cursor:pointer;transition:all .12s;
+}
+.mnemonic-locked:active{background:rgba(251,191,36,.1);}
+.mnemonic-locked-ico{font-size:18px;}
+.mnemonic-locked-txt{font-size:13px;color:var(--yellow);font-weight:600;}
+.mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.mword{background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:8px 6px;text-align:center;}
+.mword-n{font-size:9px;color:var(--t2);font-family:'DM Mono',monospace;margin-bottom:2px;}
+.mword-w{font-size:12px;font-weight:700;font-family:'DM Mono',monospace;}
+
+/* LOGIN HISTORY */
+.login-list{display:flex;flex-direction:column;gap:4px;}
+.login-row{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;background:var(--s1);border:1px solid var(--b0);
+  border-radius:10px;
+}
+.login-ico{font-size:14px;width:28px;text-align:center;flex-shrink:0;}
+.login-info{flex:1;}
+.login-date{font-size:12px;font-weight:600;}
+.login-detail{font-size:11px;color:var(--t1);font-family:'DM Mono',monospace;margin-top:2px;}
+.login-badge{font-size:10px;padding:2px 7px;border-radius:99px;font-family:'DM Mono',monospace;font-weight:700;}
+.lb-ok{background:rgba(45,212,191,.1);color:var(--green);}
+.lb-fail{background:rgba(248,113,113,.1);color:var(--red);}
+
+/* STATS ROW */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 14px 0;}
+.stat-card{background:var(--s1);border:1px solid var(--b0);border-radius:var(--r);padding:14px;text-align:center;}
+.stat-v{font-size:22px;font-weight:900;font-family:'DM Mono',monospace;}
+.stat-l{font-size:10px;color:var(--t1);margin-top:4px;text-transform:uppercase;letter-spacing:.06em;}
+
+/* BUTTONS */
+.fbtn{width:100%;padding:16px;border-radius:17px;font-family:'Outfit',sans-serif;font-weight:800;font-size:15px;transition:all .12s;border:none;}
+.fbtn:active{transform:scale(.98);}
+.fbtn.gold{background:linear-gradient(135deg,var(--gold),#A16207);color:#000;box-shadow:0 4px 18px rgba(212,168,67,.3);}
+.fbtn.ghost{background:var(--s1);color:var(--t0);border:1px solid var(--b1);}
+.fbtn.red{background:linear-gradient(135deg,var(--red),#DC2626);color:#fff;box-shadow:0 4px 18px rgba(248,113,113,.25);}
+
+/* INLINE BUTTONS */
+.ibtn-sm{
+  padding:7px 14px;border-radius:10px;font-size:12px;font-weight:700;
+  font-family:'Outfit',sans-serif;transition:all .12s;border:none;cursor:pointer;
+}
+.ibtn-sm:active{transform:scale(.96);}
+.ibtn-sm.blue{background:rgba(74,158,255,.15);color:var(--blue);}
+.ibtn-sm.red{background:rgba(248,113,113,.12);color:var(--red);}
+.ibtn-sm.green{background:rgba(45,212,191,.12);color:var(--green);}
+.ibtn-sm.yellow{background:rgba(251,191,36,.12);color:var(--yellow);}
+
+/* FORM */
+.fg{padding:0 20px 14px;}
+.fl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--t2);font-family:'DM Mono',monospace;margin-bottom:7px;}
+.fi{width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--r);padding:13px 15px;color:var(--t0);font-family:'DM Mono',monospace;font-size:14px;transition:border-color .18s;}
+.fi:focus{border-color:var(--gold);}
+.fi::placeholder{color:var(--t2);}
+.f-err{font-size:11px;color:var(--red);padding:5px 2px 0;display:none;}
+.f-err.on{display:block;}
+textarea.fi{height:88px;resize:none;line-height:1.6;}
+
+/* WARN BOX */
+.warnbox{margin:0 16px 14px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);border-radius:var(--r);padding:12px 15px;display:flex;gap:10px;}
+.warnbox.red{background:rgba(248,113,113,.06);border-color:rgba(248,113,113,.2);}
+.warnbox.info{background:rgba(74,158,255,.06);border-color:rgba(74,158,255,.2);}
+.wb-ico{font-size:16px;flex-shrink:0;margin-top:1px;}
+.wb-txt{font-size:12px;color:var(--t1);line-height:1.6;}
+.wb-txt strong{color:var(--yellow);}
+
+/* OVERLAY / SHEET */
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(16px);z-index:300;align-items:flex-end;justify-content:center;}
+#overlay.on{display:flex;}
+.sheet{width:100%;max-width:430px;background:var(--s1);border-top-left-radius:var(--r3);border-top-right-radius:var(--r3);max-height:94dvh;overflow-y:auto;animation:shup .32s cubic-bezier(.16,1,.3,1);}
+.sheet::-webkit-scrollbar{display:none;}
+@keyframes shup{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sh-grip{width:36px;height:4px;background:var(--b2);border-radius:99px;margin:12px auto 16px;}
+.sh-ttl{font-size:21px;font-weight:800;padding:0 20px 12px;}
+.sh-sub{font-size:13px;color:var(--t1);padding:0 20px 14px;margin-top:-8px;line-height:1.55;}
+.sh-btns{display:flex;gap:10px;padding:2px 20px 8px;}
+.sbtn{flex:1;padding:14px;border-radius:var(--r);font-family:'Outfit',sans-serif;font-weight:800;font-size:14px;transition:transform .12s;border:none;}
+.sbtn:active{transform:scale(.97);}
+.sbtn.cancel{background:var(--bg);color:var(--t1);border:1px solid var(--b1);}
+.sbtn.primary{background:linear-gradient(135deg,var(--gold),#A16207);color:#000;box-shadow:0 4px 16px rgba(212,168,67,.25);}
+.sbtn.danger{background:linear-gradient(135deg,var(--red),#DC2626);color:#fff;}
+
+/* TOAST */
+#toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(14px);background:#1C2840;border:1px solid var(--b2);border-radius:13px;padding:11px 18px;font-size:13px;font-weight:600;opacity:0;transition:all .25s;z-index:999;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center;}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+#toast.ok{border-color:rgba(45,212,191,.35);color:var(--green);}
+#toast.err{border-color:rgba(248,113,113,.35);color:var(--red);}
+#toast.inf{border-color:rgba(74,158,255,.35);color:var(--blue);}
+#toast.wrn{border-color:rgba(251,191,36,.35);color:var(--yellow);}
+
+.spin{width:20px;height:20px;border:2px solid var(--b2);border-top-color:var(--gold);border-radius:50%;animation:rot .65s linear infinite;display:inline-block;vertical-align:middle;}
+@keyframes rot{to{transform:rotate(360deg)}}
+.empty-row{text-align:center;color:var(--t1);font-size:13px;padding:30px 20px;}
+.loading-row{display:flex;align-items:center;justify-content:center;gap:10px;padding:30px;color:var(--t1);font-size:13px;}
+
+/* SECTION */
+.ssec{padding:0 14px;margin-bottom:4px;}
+.ssec-ttl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--t2);font-family:'DM Mono',monospace;padding:14px 4px 8px;}
+.srow{display:flex;align-items:center;gap:12px;background:var(--s1);border:1px solid var(--b0);padding:13px 15px;transition:background .12s;cursor:pointer;}
+.srow:first-of-type{border-radius:var(--r) var(--r) 0 0;}
+.srow:last-of-type{border-radius:0 0 var(--r) var(--r);}
+.srow:only-of-type{border-radius:var(--r);}
+.srow+.srow{border-top:none;}
+.srow:active{background:var(--s2);}
+.srow-ico{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.srow-info{flex:1;}
+.srow-name{font-size:14px;font-weight:600;}
+.srow-sub{font-size:12px;color:var(--t1);margin-top:2px;}
+.srow-r{color:var(--t1);font-size:15px;}
+
+/* HERO */
+.master-hero{
+  margin:8px 14px 14px;
+  background:linear-gradient(145deg,#0A1220,#0E1828);
+  border:1px solid rgba(212,168,67,.25);border-radius:var(--r3);
+  padding:22px 20px;position:relative;overflow:hidden;
+}
+.master-hero::before{content:'';position:absolute;top:-60px;right:-60px;width:160px;height:160px;background:radial-gradient(circle,rgba(212,168,67,.1) 0%,transparent 65%);border-radius:50%;pointer-events:none;}
+.mh-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--t2);font-family:'DM Mono',monospace;margin-bottom:5px;}
+.mh-count{font-size:36px;font-weight:900;color:var(--gold2);letter-spacing:-.02em;line-height:1;}
+.mh-sub{font-size:13px;color:var(--t1);font-family:'DM Mono',monospace;margin-top:4px;}
+
+@keyframes fadeup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.account-card:nth-child(1){animation:fadeup .3s ease both .04s}
+.account-card:nth-child(2){animation:fadeup .3s ease both .09s}
+.account-card:nth-child(3){animation:fadeup .3s ease both .14s}
+.account-card:nth-child(4){animation:fadeup .3s ease both .19s}
+.account-card:nth-child(5){animation:fadeup .3s ease both .24s}
+
+@media(max-width:430px){#shell{max-height:100dvh;}}
+</style>
+
+
+</head>
+<body>
+<div id="shell">
+
+<!-- ══════════ SCREEN: LOCK ══════════ -->
+<div class="scr" id="sc-lock">
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 28px;gap:8px;">
+    <div class="master-logo" style="flex-direction:column;align-items:center;gap:8px;margin-bottom:8px;">
+      <div class="master-logo-ico" style="width:60px;height:60px;border-radius:18px;font-size:28px;">👑</div>
+      <div>
+        <div style="font-size:22px;font-weight:900;color:var(--gold2);text-align:center;">Extra Wallet</div>
+        <div style="font-size:12px;color:var(--t1);text-align:center;margin-top:2px;">Master Management</div>
+      </div>
+    </div>
+    <div style="font-size:13px;color:var(--t1);margin-bottom:6px;" id="lk-sub">マスターPINを入力してください</div>
+    <div class="pin-area" style="width:100%;">
+      <div class="pin-dots" id="lk-dots"></div>
+      <div class="pinpad" id="lk-pad"></div>
+      <div class="pin-err" id="lk-err"></div>
+      <div class="pin-link" onclick="showResetOptions()">PINを忘れた場合</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN: SETUP MASTER PIN ══════════ -->
+<div class="scr off" id="sc-setup">
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 28px;gap:8px;">
+    <div style="font-size:52px;margin-bottom:4px;">👑</div>
+    <div style="font-size:22px;font-weight:900;color:var(--gold2);margin-bottom:4px;">マスター設定</div>
+    <div style="font-size:13px;color:var(--t1);text-align:center;line-height:1.6;margin-bottom:8px;max-width:280px;">マスターページ専用の6桁PINを設定してください。<br>ウォレットのPINとは別に管理されます。</div>
+    <div class="warnbox" style="margin:0;width:100%;max-width:320px;">
+      <div class="wb-ico">🔐</div>
+      <div class="wb-txt">このPINを忘れると<strong>マスターページにアクセスできなくなります</strong>。安全な場所に記録してください。</div>
+    </div>
+    <div class="pin-area" style="width:100%;margin-top:4px;">
+      <div class="pin-dots" id="setup-dots"></div>
+      <div class="pinpad" id="setup-pad"></div>
+      <div class="pin-sub" id="setup-sub"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN: HOME (MASTER DASHBOARD) ══════════ -->
+<div class="scr off" id="sc-home">
+  <div class="tbar">
+    <div class="master-logo">
+      <div class="master-logo-ico">👑</div>
+      <div>
+        <div class="master-logo-text">Extra Wallet</div>
+        <div class="master-logo-sub">Master Panel</div>
+      </div>
+    </div>
+    <div class="tbar-r">
+      <div class="ibtn" onclick="showSettings()">⚙️</div>
+      <div class="ibtn" onclick="lockMaster()" title="ロック">🔒</div>
+    </div>
+  </div>
+  <div class="sb">
+
+    <!-- Hero stats -->
+    <div class="master-hero">
+      <div class="mh-label">登録アカウント数</div>
+      <div class="mh-count" id="hm-count">0</div>
+      <div class="mh-sub" id="hm-sub">家族ウォレット管理</div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-row" style="margin-bottom:16px;">
+      <div class="stat-card">
+        <div class="stat-v" id="st-total" style="color:var(--gold2)">0</div>
+        <div class="stat-l">総アカウント</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-v" id="st-logins" style="color:var(--blue)">0</div>
+        <div class="stat-l">総ログイン数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-v" id="st-last" style="color:var(--green);font-size:13px;">—</div>
+        <div class="stat-l">最終アクセス</div>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px 16px;">
+      <button class="fbtn gold" onclick="showAddAccount()" style="padding:14px;font-size:14px;">➕ アカウント追加</button>
+      <button class="fbtn ghost" onclick="refreshAll()" style="padding:14px;font-size:14px;">↻ 全て更新</button>
+    </div>
+
+    <!-- Account list -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 16px 10px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="font-size:15px;font-weight:700;">アカウント一覧</div>
+        <span id="sync-badge" style="display:none;font-size:10px;background:rgba(45,212,191,.12);color:var(--green);border:1px solid rgba(45,212,191,.25);border-radius:99px;padding:2px 8px;font-family:'DM Mono',monospace;"></span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div style="font-size:12px;color:var(--green);font-family:'DM Mono',monospace;cursor:pointer;" onclick="manualSync()">📡 同期</div>
+        <div style="font-size:12px;color:var(--blue);font-family:'DM Mono',monospace;cursor:pointer;" onclick="sortAccounts()">並び替え</div>
+      </div>
+    </div>
+    <div class="account-list" id="account-list">
+      <div class="loading-row"><span class="spin"></span> 読み込み中…</div>
+    </div>
+
+    <div class="pad-bot"></div>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN: ACCOUNT DETAIL ══════════ -->
+<div class="scr off" id="sc-detail">
+  <div class="tbar">
+    <div class="back-row" style="padding:0;" onclick="NAV.back()">← 戻る</div>
+    <div class="tbar-r">
+      <div class="ibtn" onclick="editCurrentAccount()">✏️</div>
+      <div class="ibtn" onclick="deleteCurrentAccount()" style="color:var(--red);">🗑</div>
+    </div>
+  </div>
+  <div class="sb" id="detail-body">
+  </div>
+</div>
+
+<!-- ══════════ SCREEN: LOGIN HISTORY ══════════ -->
+<div class="scr off" id="sc-history">
+  <div class="tbar"><div class="tbar-title">ログイン履歴</div><div class="tbar-r"><div class="ibtn" onclick="NAV.back()">✕</div></div></div>
+  <div class="sb">
+    <div style="padding:8px 14px 14px;">
+      <div style="font-size:13px;color:var(--t1);margin-bottom:14px;" id="hist-account-name"></div>
+      <div class="login-list" id="history-list"></div>
+    </div>
+    <div class="pad-bot"></div>
+  </div>
+</div>
+
+</div><!-- end #shell -->
+
+<!-- OVERLAY / SHEET -->
+<div id="overlay" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet"><div class="sh-grip"></div><div id="sh-body"></div></div>
+</div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════
+   CRYPTO — AES-256-GCM + PBKDF2 (same as wallet)
+═══════════════════════════════════════════════════════ */
+const CRYPTO = {
+  async deriveKey(pin, salt) {
+    const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:250000, hash:'SHA-256' }, km, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+  },
+  async encrypt(plain, pin) {
+    const salt = crypto.getRandomValues(new Uint8Array(32));
+    const iv   = crypto.getRandomValues(new Uint8Array(12));
+    const key  = await this.deriveKey(pin, salt);
+    const ct   = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, new TextEncoder().encode(plain));
+    const out  = new Uint8Array(32+12+ct.byteLength);
+    out.set(salt,0); out.set(iv,32); out.set(new Uint8Array(ct),44);
+    return btoa(String.fromCharCode(...out));
+  },
+  async decrypt(cipher, pin) {
+    const buf = Uint8Array.from(atob(cipher), c => c.charCodeAt(0));
+    const key = await this.deriveKey(pin, buf.slice(0,32));
+    const pt  = await crypto.subtle.decrypt({ name:'AES-GCM', iv:buf.slice(32,44) }, key, buf.slice(44));
+    return new TextDecoder().decode(pt);
+  },
+  async hashPin(pin) {
+    const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('ExtraWalletMaster:'+pin));
+    return btoa(String.fromCharCode(...new Uint8Array(h)));
+  },
+  // ウォレットアプリと共通の暗号化キー
+  SHARE_KEY: 'ExtraWalletFamilyShare2024',
+  async decryptShared(cipher) {
+    try { return await this.decrypt(cipher, this.SHARE_KEY); } catch { return null; }
+  },
+};
+
+/* ═══════════════════════════════════════════════════════
+   BIP-44 ADDRESS DERIVATION (same logic as wallet)
+═══════════════════════════════════════════════════════ */
+const BASE58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+function toBase58CheckTRON(addrBytes20) {
+  const full = new Uint8Array(21);
+  full[0] = 0x41; full.set(addrBytes20, 1);
+  const h1 = ethers.sha256(full);
+  const h2 = ethers.sha256(h1);
+  const cs = ethers.getBytes(h2).slice(0,4);
+  const withCs = new Uint8Array(25);
+  withCs.set(full); withCs.set(cs, 21);
+  let num = BigInt('0x'+Array.from(withCs).map(b=>b.toString(16).padStart(2,'0')).join(''));
+  let result = '';
+  while(num>0n){ result=BASE58[Number(num%58n)]+result; num=num/58n; }
+  for(let i=0;i<withCs.length&&withCs[i]===0;i++) result='1'+result;
+  return result;
+}
+
+function deriveAddresses(mnemonic) {
+  // ETH / BNB: m/44'/60'/0'/0/0
+  const ethNode = ethers.HDNodeWallet.fromPhrase(mnemonic, null, "m/44'/60'/0'/0/0");
+  // TRON: m/44'/195'/0'/0/0
+  const trxNode = ethers.HDNodeWallet.fromPhrase(mnemonic, null, "m/44'/195'/0'/0/0");
+  const pubKeyUncomp = ethers.SigningKey.computePublicKey(trxNode.privateKey, false);
+  const pubKeyBytes = ethers.getBytes(pubKeyUncomp).slice(1);
+  const hash = ethers.keccak256(pubKeyBytes);
+  const addrBytes = ethers.getBytes(hash).slice(12);
+  const tronAddr = toBase58CheckTRON(addrBytes);
+  return {
+    ETH: ethNode.address,
+    BNB: ethNode.address, // same as ETH
+    TRX: tronAddr,
+  };
+}
+
+/* ═══════════════════════════════════════════════════════
+   STATE & STORAGE
+═══════════════════════════════════════════════════════ */
+const STATE = {
+  masterPin: '',        // in memory only while unlocked
+  currentScreen: 'sc-lock',
+  screenHistory: [],
+  accounts: [],         // Account[]
+  currentAccountId: null,
+  sortOrder: 'created_desc', // created_desc / name_asc / login_desc
+};
+
+/*
+Account structure:
+{
+  id: string,           // unique ID
+  name: string,         // display name (e.g. "パパ", "ママ")
+  emoji: string,        // avatar emoji
+  encryptedMnemonic: string,  // AES-GCM encrypted with master PIN
+  addresses: { ETH, BNB, TRX },
+  createdAt: string,    // ISO timestamp
+  note: string,         // optional memo
+  loginHistory: LoginRecord[],  // last 50
+}
+
+LoginRecord:
+{
+  timestamp: string,
+  type: 'unlock' | 'fail' | 'create',
+  device: string,
+  note: string,
+}
+*/
+
+/* ═══════════════════════════════════════════════════════
+   NAVIGATION
+═══════════════════════════════════════════════════════ */
+const NAV = {
+  go(id) {
+    if(id===STATE.currentScreen) return;
+    const from = document.getElementById(STATE.currentScreen);
+    const to   = document.getElementById(id);
+    if(!from||!to) return;
+    from.classList.add('back');
+    setTimeout(()=>{ from.classList.add('off'); from.classList.remove('back'); }, 280);
+    to.classList.remove('off');
+    STATE.screenHistory.push(STATE.currentScreen);
+    STATE.currentScreen = id;
+    if(id==='sc-home') renderHome();
+  },
+  back() {
+    const prev = STATE.screenHistory.pop();
+    if(prev){
+      document.getElementById(STATE.currentScreen)?.classList.add('off');
+      const to = document.getElementById(prev);
+      if(to){ to.classList.remove('off'); to.classList.remove('back'); }
+      STATE.currentScreen = prev;
+    }
+  },
+};
+
+/* ═══════════════════════════════════════════════════════
+   STORAGE
+═══════════════════════════════════════════════════════ */
+const STORE = {
+  KEY_PIN:      'ew_master_pinhash',
+  KEY_ACCOUNTS: 'ew_master_accounts',
+
+  hasMasterPin() { return !!localStorage.getItem(this.KEY_PIN); },
+  getMasterPinHash() { return localStorage.getItem(this.KEY_PIN); },
+
+  async saveMasterPin(pin) {
+    const h = await CRYPTO.hashPin(pin);
+    localStorage.setItem(this.KEY_PIN, h);
+    STATE.masterPin = pin;
+  },
+
+  async verifyMasterPin(pin) {
+    const stored = this.getMasterPinHash();
+    if(!stored) return false;
+    const h = await CRYPTO.hashPin(pin);
+    return h === stored;
+  },
+
+  loadAccounts() {
+    try {
+      const raw = localStorage.getItem(this.KEY_ACCOUNTS);
+      STATE.accounts = raw ? JSON.parse(raw) : [];
+    } catch { STATE.accounts = []; }
+  },
+
+  saveAccounts() {
+    localStorage.setItem(this.KEY_ACCOUNTS, JSON.stringify(STATE.accounts));
+  },
+
+  async addAccount(name, emoji, mnemonic, note) {
+    const addresses = deriveAddresses(mnemonic);
+    const encryptedMnemonic = await CRYPTO.encrypt(mnemonic, STATE.masterPin);
+    const account = {
+      id: 'acc_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      name,
+      emoji,
+      encryptedMnemonic,
+      addresses,
+      createdAt: new Date().toISOString(),
+      note: note || '',
+      loginHistory: [{
+        timestamp: new Date().toISOString(),
+        type: 'create',
+        device: navigator.userAgent.includes('iPhone')||navigator.userAgent.includes('iPad')?'iOS':navigator.userAgent.includes('Android')?'Android':'Desktop',
+        note: 'アカウント作成',
+      }],
+    };
+    STATE.accounts.push(account);
+    this.saveAccounts();
+    return account;
+  },
+
+  addLoginRecord(accountId, type, note='') {
+    const acc = STATE.accounts.find(a=>a.id===accountId);
+    if(!acc) return;
+    if(!acc.loginHistory) acc.loginHistory = [];
+    acc.loginHistory.unshift({
+      timestamp: new Date().toISOString(),
+      type,
+      device: navigator.userAgent.includes('iPhone')||navigator.userAgent.includes('iPad')?'iOS':navigator.userAgent.includes('Android')?'Android':'Desktop',
+      note,
+    });
+    acc.loginHistory = acc.loginHistory.slice(0, 100); // keep last 100
+    this.saveAccounts();
+  },
+
+  deleteAccount(id) {
+    STATE.accounts = STATE.accounts.filter(a=>a.id!==id);
+    this.saveAccounts();
+  },
+
+  updateAccount(id, updates) {
+    const idx = STATE.accounts.findIndex(a=>a.id===id);
+    if(idx<0) return;
+    STATE.accounts[idx] = { ...STATE.accounts[idx], ...updates };
+    this.saveAccounts();
+  },
+};
+
+/* ═══════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════ */
+function toast(msg, type='inf', dur=3500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'toast on '+type;
+  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('on'), dur);
+}
+
+/* ═══════════════════════════════════════════════════════
+   PIN PAD BUILDER
+═══════════════════════════════════════════════════════ */
+function buildPinPad(padId, dotPfx, onComplete, dotColor='var(--gold)') {
+  let inp = '';
+  const pad = document.getElementById(padId);
+  if(!pad) return;
+  pad.innerHTML = [1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k =>
+    k==='' ? '<div class="pkey empty"></div>'
+           : `<div class="pkey${k==='⌫'?' del':''}" data-k="${k}">${k}</div>`
+  ).join('');
+  pad.querySelectorAll('.pkey:not(.empty)').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(btn.dataset.k==='⌫') inp=inp.slice(0,-1);
+      else if(inp.length<6) inp+=btn.dataset.k;
+      for(let i=0;i<6;i++){
+        const d = document.getElementById(dotPfx+i);
+        if(d){ d.classList.toggle('fill', i<inp.length); d.style.background = i<inp.length ? dotColor : ''; }
+      }
+      if(inp.length===6){ const p=inp; inp=''; for(let i=0;i<6;i++){const d=document.getElementById(dotPfx+i);if(d){d.classList.remove('fill');d.style.background='';}} setTimeout(()=>onComplete(p),80); }
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
+   LOCK SCREEN
+═══════════════════════════════════════════════════════ */
+let lockAttempts = 0;
+
+function buildLockScreen() {
+  const dots = document.getElementById('lk-dots');
+  if(dots) dots.innerHTML = Array.from({length:6},(_,i)=>`<div class="pin-dot" id="lkd${i}"></div>`).join('');
+  buildPinPad('lk-pad', 'lkd', async pin => {
+    const ok = await STORE.verifyMasterPin(pin);
+    if(ok) {
+      lockAttempts = 0;
+      STATE.masterPin = pin;
+      document.getElementById('lk-err').textContent = '';
+      STORE.loadAccounts();
+      NAV.go('sc-home');
+      // ログイン後にshared storageを同期
+      setTimeout(()=>SYNC.syncFromShared().then(n=>{ if(n>0) renderHome(); }).catch(()=>{}), 500);
+    } else {
+      lockAttempts++;
+      const rem = 5 - lockAttempts;
+      document.getElementById('lk-err').textContent =
+        `PINが違います。残り${rem}回`;
+      for(let i=0;i<6;i++){
+        const d=document.getElementById('lkd'+i);
+        if(d){d.classList.add('err');setTimeout(()=>d.classList.remove('err'),400);}
+      }
+      if(lockAttempts>=5){
+        document.getElementById('lk-err').textContent='ロックされました。データをリセットします…';
+        setTimeout(()=>resetAllData(),2000);
+      }
+    }
+  }, 'var(--gold)');
+}
+
+/* ═══════════════════════════════════════════════════════
+   SETUP MASTER PIN
+═══════════════════════════════════════════════════════ */
+let setupPinFirst = '';
+
+function buildSetupPin() {
+  setupPinFirst = '';
+  const dots = document.getElementById('setup-dots');
+  if(dots) dots.innerHTML = Array.from({length:6},(_,i)=>`<div class="pin-dot" id="spd${i}"></div>`).join('');
+  const sub = document.getElementById('setup-sub');
+  if(sub) sub.textContent = '';
+  buildPinPad('setup-pad', 'spd', async pin => {
+    if(!setupPinFirst) {
+      setupPinFirst = pin;
+      if(sub) sub.textContent = 'もう一度入力して確認';
+    } else {
+      if(pin !== setupPinFirst) {
+        setupPinFirst = '';
+        if(sub) sub.textContent = 'PINが一致しません。最初からやり直してください。';
+        for(let i=0;i<6;i++){const d=document.getElementById('spd'+i);if(d){d.classList.add('err');setTimeout(()=>d.classList.remove('err'),500);}}
+        return;
+      }
+      await STORE.saveMasterPin(pin);
+      setupPinFirst = '';
+      STORE.loadAccounts();
+      NAV.go('sc-home');
+      toast('マスターPINを設定しました！','ok');
+    }
+  }, 'var(--gold)');
+}
+
+/* ═══════════════════════════════════════════════════════
+   HOME RENDER
+═══════════════════════════════════════════════════════ */
+async function renderHome() {
+  updateClock();
+  // shared storageから最新データを同期
+  try {
+    const synced = await SYNC.syncFromShared();
+    if(synced > 0) {
+      const badge = document.getElementById('sync-badge');
+      if(badge){ badge.textContent = '📡 '+synced+'件同期'; badge.style.display='inline'; setTimeout(()=>badge.style.display='none', 3000); }
+    }
+  } catch {}
+  const accs = getSortedAccounts();
+
+  // Stats
+  const countEl = document.getElementById('hm-count');
+  if(countEl) countEl.textContent = accs.length;
+  const stTotal = document.getElementById('st-total');
+  if(stTotal) stTotal.textContent = accs.length;
+  const stLogins = document.getElementById('st-logins');
+  if(stLogins) stLogins.textContent = accs.reduce((s,a)=>(s+(a.loginHistory?.length||0)),0);
+  const stLast = document.getElementById('st-last');
+  if(stLast){
+    const allLogs = accs.flatMap(a=>a.loginHistory||[]).sort((a,b)=>b.timestamp.localeCompare(a.timestamp));
+    stLast.textContent = allLogs.length ? fmtDate(allLogs[0].timestamp) : '—';
+  }
+  const subEl = document.getElementById('hm-sub');
+  if(subEl) subEl.textContent = `登録済み ${accs.length} 名 · ETH / TRX / BNB`;
+
+  // Account list
+  const list = document.getElementById('account-list');
+  if(!list) return;
+  if(!accs.length) {
+    list.innerHTML = `<div class="empty-row">📭 アカウントがありません。<br>「➕ アカウント追加」から始めましょう。</div>`;
+    return;
+  }
+  list.innerHTML = accs.map(acc => buildAccountCard(acc)).join('');
+}
+
+function buildAccountCard(acc) {
+  const loginCount = acc.loginHistory?.length || 0;
+  const lastLogin  = acc.loginHistory?.[0];
+  const shortEth   = acc.addresses?.ETH ? acc.addresses.ETH.slice(0,8)+'…'+acc.addresses.ETH.slice(-5) : '—';
+  const hasEncMn   = !!(acc.encryptedMnemonic);
+
+  return `<div class="account-card" id="card-${acc.id}">
+    <div class="ac-header" onclick="toggleCard('${acc.id}')">
+      <div class="ac-avatar">${acc.emoji||'👤'}</div>
+      <div class="ac-meta">
+        <div class="ac-name">${escHtml(acc.name||'未設定')}</div>
+        <div class="ac-created">📅 ${fmtDate(acc.createdAt)}</div>
+        <div class="ac-eth-addr">ETH: ${shortEth}</div>
+      </div>
+      <div class="ac-actions">
+        <span class="ac-badge ${loginCount>0?'active':'inactive'}">🔓 ${loginCount}回</span>
+        ${hasEncMn?'<span style="font-size:10px;color:var(--green);">📝</span>':'<span style="font-size:10px;color:var(--t2);">📝</span>'}
+        <span class="ac-chevron" id="chev-${acc.id}">›</span>
+      </div>
+    </div>
+    <div class="ac-details" id="detail-${acc.id}">
+
+      <!-- ① アドレス -->
+      <div class="ac-detail-section">
+        <div class="ac-detail-label">ウォレットアドレス</div>
+        <div class="ac-addr-row">
+          <div class="ac-addr-item" onclick="copyText('${acc.addresses?.ETH||''}','ETH/BNBアドレス')">
+            <span class="ac-addr-chain">⟠</span>
+            <span class="ac-addr-val">${acc.addresses?.ETH||'—'}</span>
+            <span class="ac-addr-copy">📋</span>
+          </div>
+          <div class="ac-addr-item" onclick="copyText('${acc.addresses?.TRX||''}','TRONアドレス')">
+            <span class="ac-addr-chain">◈</span>
+            <span class="ac-addr-val">${acc.addresses?.TRX||'—'}</span>
+            <span class="ac-addr-copy">📋</span>
+          </div>
+          <div class="ac-addr-item" onclick="copyText('${acc.addresses?.BNB||''}','BNBアドレス')">
+            <span class="ac-addr-chain">⬡</span>
+            <span class="ac-addr-val">${acc.addresses?.BNB||'—'}</span>
+            <span class="ac-addr-copy">📋</span>
+          </div>
+          <div class="ac-addr-item" onclick="copyText('${acc.addresses?.BTC||''}','BTCアドレス')">
+            <span class="ac-addr-chain">₿</span>
+            <span class="ac-addr-val">${acc.addresses?.BTC||'—'}</span>
+            <span class="ac-addr-copy">📋</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ② 作成日時・メモ -->
+      <div class="ac-detail-section">
+        <div class="ac-detail-label">アカウント情報</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--s1);border-radius:10px;border:1px solid var(--b0);">
+            <span style="font-size:12px;color:var(--t1);">作成日時</span>
+            <span style="font-size:12px;font-family:'DM Mono',monospace;">${fmtDateFull(acc.createdAt)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--s1);border-radius:10px;border:1px solid var(--b0);">
+            <span style="font-size:12px;color:var(--t1);">最終ログイン</span>
+            <span style="font-size:12px;font-family:'DM Mono',monospace;">${lastLogin?fmtDateFull(lastLogin.timestamp):'—'}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--s1);border-radius:10px;border:1px solid var(--b0);">
+            <span style="font-size:12px;color:var(--t1);">ログイン回数</span>
+            <span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--blue);">${loginCount}回</span>
+          </div>
+          ${acc.note?`<div style="padding:8px 12px;background:var(--s1);border-radius:10px;border:1px solid var(--b0);font-size:12px;color:var(--t1);">📝 ${escHtml(acc.note)}</div>`:''}
+        </div>
+      </div>
+
+      <!-- ③ ニーモニック -->
+      <div class="ac-detail-section">
+        <div class="ac-detail-label">ニーモニックフレーズ</div>
+        ${hasEncMn ? `
+        <div class="mnemonic-locked" onclick="revealMnemonic('${acc.id}')" id="mn-locked-${acc.id}">
+          <span class="mnemonic-locked-ico">🔑</span>
+          <span class="mnemonic-locked-txt">タップして表示（マスターPIN認証）</span>
+        </div>
+        <div id="mn-grid-${acc.id}" style="display:none;"></div>
+        <div id="mn-hide-btn-${acc.id}" style="display:none;text-align:right;margin-top:8px;">
+          <button class="ibtn-sm yellow" onclick="hideMnemonic('${acc.id}')">🙈 隠す</button>
+        </div>
+        ` : `
+        <div style="background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--t1);">
+          ⚠️ ニーモニックが未登録です。<br>ウォレットアプリの「設定 → マスターへ登録」から送信してください。
+        </div>
+        `}
+      </div>
+
+      <!-- ④ ログイン履歴（直近3件） -->
+      <div class="ac-detail-section">
+        <div class="ac-detail-label" style="display:flex;justify-content:space-between;align-items:center;">
+          ログイン履歴
+          <button class="ibtn-sm blue" onclick="showFullHistory('${acc.id}')">全て見る（${loginCount}件）</button>
+        </div>
+        <div class="login-list">
+          ${buildLoginRows(acc.loginHistory?.slice(0,3)||[])}
+        </div>
+      </div>
+
+      <!-- ⑤ 操作ボタン -->
+      <div class="ac-detail-section">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="ibtn-sm blue" onclick="editAccount('${acc.id}')">✏️ 編集</button>
+          <button class="ibtn-sm green" onclick="addLoginRecord('${acc.id}')">✅ ログイン記録</button>
+          <button class="ibtn-sm yellow" onclick="showFullHistory('${acc.id}')">📋 履歴</button>
+          <button class="ibtn-sm red" onclick="confirmDeleteAccount('${acc.id}')">🗑 削除</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function buildLoginRows(history) {
+  if(!history.length) return '<div style="font-size:12px;color:var(--t2);padding:4px 0;">ログイン記録なし</div>';
+  return history.map(h => {
+    const ico = h.type==='create'?'🆕':h.type==='unlock'?'🔓':h.type==='fail'?'❌':'📝';
+    const badgeCls = h.type==='fail'?'lb-fail':'lb-ok';
+    const badgeTxt = h.type==='create'?'作成':h.type==='unlock'?'ログイン':h.type==='fail'?'失敗':h.note||'記録';
+    return `<div class="login-row">
+      <div class="login-ico">${ico}</div>
+      <div class="login-info">
+        <div class="login-date">${fmtDateFull(h.timestamp)}</div>
+        <div class="login-detail">${escHtml(h.device||'')} ${h.note?'· '+escHtml(h.note):''}</div>
+      </div>
+      <span class="login-badge ${badgeCls}">${badgeTxt}</span>
+    </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════
+   CARD TOGGLE
+═══════════════════════════════════════════════════════ */
+function toggleCard(id) {
+  const detail = document.getElementById('detail-'+id);
+  const chev   = document.getElementById('chev-'+id);
+  if(!detail) return;
+  const isOpen = detail.classList.contains('open');
+  // Close all others
+  document.querySelectorAll('.ac-details.open').forEach(d => { d.classList.remove('open'); });
+  document.querySelectorAll('.ac-chevron.open').forEach(c => c.classList.remove('open'));
+  if(!isOpen) {
+    detail.classList.add('open');
+    if(chev) chev.classList.add('open');
+    // scroll into view
+    setTimeout(() => document.getElementById('card-'+id)?.scrollIntoView({behavior:'smooth',block:'nearest'}), 100);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   MNEMONIC REVEAL
+═══════════════════════════════════════════════════════ */
+function revealMnemonic(accountId) {
+  openSheet(`
+    <div class="sh-ttl">🔑 ニーモニック確認</div>
+    <div class="sh-sub">マスターPINを入力してください</div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:0 20px 22px;">
+      <div class="pin-dots" id="mn-pin-dots"></div>
+      <div class="pinpad" id="mn-pin-pad"></div>
+      <div style="font-size:13px;color:var(--red);min-height:18px;text-align:center;" id="mn-pin-err"></div>
+    </div>`);
+  const dots = document.getElementById('mn-pin-dots');
+  if(dots) dots.innerHTML = Array.from({length:6},(_,i)=>`<div class="pin-dot" id="mnpd${i}"></div>`).join('');
+  buildPinPad('mn-pin-pad', 'mnpd', async pin => {
+    const ok = await STORE.verifyMasterPin(pin);
+    if(!ok) {
+      document.getElementById('mn-pin-err').textContent = 'PINが違います';
+      for(let i=0;i<6;i++){const d=document.getElementById('mnpd'+i);if(d){d.classList.add('err');setTimeout(()=>d.classList.remove('err'),400);}}
+      return;
+    }
+    const acc = STATE.accounts.find(a=>a.id===accountId);
+    if(!acc){ closeSheet(); toast('アカウントが見つかりません','err'); return; }
+    try {
+      // 共有キーで復号を試みる（自動登録データ）→ 失敗したらマスターPINで復号
+      let phrase = acc.encryptedMnemonic ? await CRYPTO.decryptShared(acc.encryptedMnemonic) : null;
+      if(!phrase && acc.encryptedMnemonic) phrase = await CRYPTO.decrypt(acc.encryptedMnemonic, pin);
+      closeSheet();
+      // Show in card
+      const locked = document.getElementById('mn-locked-'+accountId);
+      const grid   = document.getElementById('mn-grid-'+accountId);
+      const hideBtn= document.getElementById('mn-hide-btn-'+accountId);
+      if(locked) locked.style.display='none';
+      if(grid){
+        const words = phrase.split(' ');
+        grid.innerHTML = `<div class="mgrid">${words.map((w,i)=>`<div class="mword"><div class="mword-n">${i+1}</div><div class="mword-w">${w}</div></div>`).join('')}</div>`;
+        grid.style.display='block';
+      }
+      if(hideBtn) hideBtn.style.display='block';
+      toast('ニーモニックを表示しました','wrn',5000);
+    } catch {
+      closeSheet();
+      toast('復号に失敗しました','err');
+    }
+  }, 'var(--gold)');
+}
+
+function hideMnemonic(accountId) {
+  const locked  = document.getElementById('mn-locked-'+accountId);
+  const grid    = document.getElementById('mn-grid-'+accountId);
+  const hideBtn = document.getElementById('mn-hide-btn-'+accountId);
+  if(locked)  locked.style.display='flex';
+  if(grid)    { grid.innerHTML=''; grid.style.display='none'; }
+  if(hideBtn) hideBtn.style.display='none';
+}
+
+/* ═══════════════════════════════════════════════════════
+   ADD ACCOUNT SHEET
+═══════════════════════════════════════════════════════ */
+const EMOJI_LIST = ['👤','👦','👧','👨','👩','🧑','👴','👵','🧒','👶','🙋','🧔','💁','🙆','🤷','👮','🕵','💂','🧙','🧝'];
+
+function showAddAccount() {
+  openSheet(`
+    <div class="sh-ttl">➕ アカウント追加</div>
+    <div class="sh-sub">家族のウォレットを登録します</div>
+    <div class="fg">
+      <div class="fl">名前（例: パパ・ママ）</div>
+      <input class="fi" id="add-name" placeholder="例: パパ" maxlength="20">
+      <div class="f-err" id="add-name-err">名前を入力してください</div>
+    </div>
+    <div class="fg">
+      <div class="fl">アイコン</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;padding-bottom:4px;" id="emoji-picker">
+        ${EMOJI_LIST.map((e,i)=>`<div onclick="selectEmoji('${e}',this)" style="width:40px;height:40px;border-radius:10px;background:var(--s2);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;transition:all .12s;${i===0?'border-color:var(--gold);background:rgba(212,168,67,.1);':''}" data-emoji="${e}">${e}</div>`).join('')}
+      </div>
+    </div>
+    <div class="fg">
+      <div class="fl">ニーモニックフレーズ</div>
+      <textarea class="fi" id="add-phrase" placeholder="word1 word2 word3 ... (12語または24語)" style="height:80px;"></textarea>
+      <div class="f-err" id="add-phrase-err">ニーモニックが無効です</div>
+      <div style="margin-top:8px;">
+        <button class="ibtn-sm blue" onclick="generateNewMnemonic()">🎲 新規生成</button>
+      </div>
+    </div>
+    <div class="fg">
+      <div class="fl">メモ（任意）</div>
+      <input class="fi" id="add-note" placeholder="例: メインウォレット" maxlength="100">
+    </div>
+    <div class="sh-btns">
+      <button class="sbtn cancel" onclick="closeSheet()">キャンセル</button>
+      <button class="sbtn primary" onclick="submitAddAccount()">追加する</button>
+    </div>
+    <div class="pad-bot"></div>`);
+}
+
+let selectedEmoji = EMOJI_LIST[0];
+function selectEmoji(e, el) {
+  selectedEmoji = e;
+  document.querySelectorAll('#emoji-picker div').forEach(d => {
+    d.style.borderColor = 'var(--b1)'; d.style.background = 'var(--s2)';
+  });
+  el.style.borderColor = 'var(--gold)'; el.style.background = 'rgba(212,168,67,.1)';
+}
+
+function generateNewMnemonic() {
+  const w = ethers.Wallet.createRandom();
+  const inp = document.getElementById('add-phrase');
+  if(inp) inp.value = w.mnemonic.phrase;
+  toast('新しいニーモニックを生成しました','ok');
+}
+
+async function submitAddAccount() {
+  const name   = document.getElementById('add-name')?.value?.trim();
+  const phrase = document.getElementById('add-phrase')?.value?.trim();
+  const note   = document.getElementById('add-note')?.value?.trim();
+  const nameErr   = document.getElementById('add-name-err');
+  const phraseErr = document.getElementById('add-phrase-err');
+  if(nameErr) nameErr.classList.remove('on');
+  if(phraseErr) phraseErr.classList.remove('on');
+
+  if(!name){ if(nameErr) nameErr.classList.add('on'); return; }
+  try { ethers.HDNodeWallet.fromPhrase(phrase); } catch {
+    if(phraseErr) phraseErr.classList.add('on'); return;
+  }
+  const btn = document.querySelector('#sh-body .sbtn.primary');
+  if(btn){ btn.disabled=true; btn.innerHTML='<span class="spin" style="width:16px;height:16px;border-width:2px;"></span>'; }
+  try {
+    await STORE.addAccount(name, selectedEmoji, phrase, note);
+    closeSheet();
+    renderHome();
+    toast(`「${name}」のアカウントを追加しました！`,'ok');
+  } catch(e) {
+    toast('エラー: '+e.message.slice(0,50),'err');
+    if(btn){ btn.disabled=false; btn.innerHTML='追加する'; }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   EDIT ACCOUNT
+═══════════════════════════════════════════════════════ */
+function editAccount(id) {
+  const acc = STATE.accounts.find(a=>a.id===id);
+  if(!acc) return;
+  openSheet(`
+    <div class="sh-ttl">✏️ アカウント編集</div>
+    <div class="fg">
+      <div class="fl">名前</div>
+      <input class="fi" id="edit-name" value="${escHtml(acc.name)}" maxlength="20">
+    </div>
+    <div class="fg">
+      <div class="fl">アイコン</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;" id="edit-emoji-picker">
+        ${EMOJI_LIST.map(e=>`<div onclick="selectEditEmoji('${e}',this)" style="width:40px;height:40px;border-radius:10px;background:var(--s2);border:1px solid ${e===acc.emoji?'var(--gold)':'var(--b1)'};display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;transition:all .12s;${e===acc.emoji?'background:rgba(212,168,67,.1);':''}" data-emoji="${e}">${e}</div>`).join('')}
+      </div>
+    </div>
+    <div class="fg">
+      <div class="fl">メモ</div>
+      <input class="fi" id="edit-note" value="${escHtml(acc.note||'')}" maxlength="100">
+    </div>
+    <div class="sh-btns">
+      <button class="sbtn cancel" onclick="closeSheet()">キャンセル</button>
+      <button class="sbtn primary" onclick="submitEditAccount('${id}')">保存</button>
+    </div>
+    <div class="pad-bot"></div>`);
+  selectedEditEmoji = acc.emoji || EMOJI_LIST[0];
+}
+
+let selectedEditEmoji = EMOJI_LIST[0];
+function selectEditEmoji(e, el) {
+  selectedEditEmoji = e;
+  document.querySelectorAll('#edit-emoji-picker div').forEach(d => { d.style.borderColor='var(--b1)'; d.style.background='var(--s2)'; });
+  el.style.borderColor='var(--gold)'; el.style.background='rgba(212,168,67,.1)';
+}
+
+function submitEditAccount(id) {
+  const name = document.getElementById('edit-name')?.value?.trim();
+  const note = document.getElementById('edit-note')?.value?.trim();
+  if(!name){ toast('名前を入力してください','err'); return; }
+  STORE.updateAccount(id, { name, emoji: selectedEditEmoji, note: note||'' });
+  closeSheet();
+  renderHome();
+  toast('保存しました','ok');
+}
+
+/* ═══════════════════════════════════════════════════════
+   LOGIN RECORD
+═══════════════════════════════════════════════════════ */
+function addLoginRecord(id) {
+  const acc = STATE.accounts.find(a=>a.id===id);
+  if(!acc) return;
+  openSheet(`
+    <div class="sh-ttl">✅ ログイン記録を追加</div>
+    <div class="sh-sub">「${escHtml(acc.name)}」のログインを手動記録します</div>
+    <div class="fg">
+      <div class="fl">種類</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="ibtn-sm blue on-sel" id="lr-unlock" onclick="selectLRType('unlock',this)" style="border:1px solid var(--blue);">🔓 ログイン</button>
+        <button class="ibtn-sm" id="lr-other" onclick="selectLRType('other',this)" style="border:1px solid var(--b1);">📝 その他</button>
+      </div>
+    </div>
+    <div class="fg">
+      <div class="fl">メモ（任意）</div>
+      <input class="fi" id="lr-note" placeholder="例: iPhone から確認" maxlength="100">
+    </div>
+    <div class="sh-btns">
+      <button class="sbtn cancel" onclick="closeSheet()">キャンセル</button>
+      <button class="sbtn primary" onclick="submitLoginRecord('${id}')">記録する</button>
+    </div>
+    <div class="pad-bot"></div>`);
+}
+
+let selectedLRType = 'unlock';
+function selectLRType(type, el) {
+  selectedLRType = type;
+  document.querySelectorAll('#sh-body .ibtn-sm').forEach(b => b.style.borderColor='var(--b1)');
+  el.style.borderColor = 'var(--blue)';
+}
+function submitLoginRecord(id) {
+  const note = document.getElementById('lr-note')?.value?.trim();
+  STORE.addLoginRecord(id, selectedLRType, note||'');
+  closeSheet();
+  renderHome();
+  toast('ログインを記録しました','ok');
+}
+
+/* ═══════════════════════════════════════════════════════
+   FULL HISTORY
+═══════════════════════════════════════════════════════ */
+function showFullHistory(id) {
+  const acc = STATE.accounts.find(a=>a.id===id);
+  if(!acc) return;
+  const nameEl = document.getElementById('hist-account-name');
+  if(nameEl) nameEl.textContent = `${acc.emoji||'👤'} ${acc.name} — ${acc.loginHistory?.length||0}件のログイン記録`;
+  const listEl = document.getElementById('history-list');
+  if(listEl) listEl.innerHTML = buildLoginRows(acc.loginHistory||[]) || '<div class="empty-row">記録なし</div>';
+  NAV.go('sc-history');
+}
+
+/* ═══════════════════════════════════════════════════════
+   DELETE ACCOUNT
+═══════════════════════════════════════════════════════ */
+function confirmDeleteAccount(id) {
+  const acc = STATE.accounts.find(a=>a.id===id);
+  if(!acc) return;
+  openSheet(`
+    <div class="sh-ttl" style="color:var(--red);">⚠️ アカウントを削除</div>
+    <div class="warnbox red" style="margin:0 20px 16px;">
+      <div class="wb-ico">🚨</div>
+      <div class="wb-txt">「<strong>${escHtml(acc.name)}</strong>」のアカウント情報をすべて削除します。<br>ニーモニックのバックアップを確認してください。</div>
+    </div>
+    <div class="fg">
+      <div class="fl">「DELETE」と入力して確認</div>
+      <input class="fi" id="del-confirm" placeholder="DELETE" style="text-align:center;font-size:16px;font-weight:800;letter-spacing:.1em;" autocomplete="off">
+    </div>
+    <div class="sh-btns">
+      <button class="sbtn cancel" onclick="closeSheet()">キャンセル</button>
+      <button class="sbtn danger" onclick="execDeleteAccount('${id}')">🗑 削除する</button>
+    </div>
+    <div class="pad-bot"></div>`);
+}
+
+function execDeleteAccount(id) {
+  const inp = document.getElementById('del-confirm');
+  if(!inp||inp.value.trim().toUpperCase()!=='DELETE'){ toast('「DELETE」と入力してください','err'); return; }
+  const acc = STATE.accounts.find(a=>a.id===id);
+  STORE.deleteAccount(id);
+  closeSheet();
+  renderHome();
+  toast(`「${acc?.name||''}」を削除しました`,'inf');
+}
+
+/* ═══════════════════════════════════════════════════════
+   SORT
+═══════════════════════════════════════════════════════ */
+async function manualSync() {
+  const badge = document.getElementById('sync-badge');
+  if(badge){ badge.textContent = '📡 同期中…'; badge.style.display='inline'; }
+  try {
+    const n = await SYNC.syncFromShared();
+    if(badge){ badge.textContent = n>0?`📡 ${n}件更新`:'📡 最新です'; setTimeout(()=>badge.style.display='none',2500); }
+    if(n>0) renderHome();
+    toast(n>0?`${n}件のウォレットを同期しました`:'新しいウォレットはありません', n>0?'ok':'inf');
+  } catch {
+    if(badge) badge.style.display='none';
+    toast('同期できませんでした（Artifact環境外）','wrn');
+  }
+}
+
+function getSortedAccounts() {
+  const accs = [...STATE.accounts];
+  if(STATE.sortOrder==='name_asc') return accs.sort((a,b)=>a.name.localeCompare(b.name));
+  if(STATE.sortOrder==='login_desc') return accs.sort((a,b)=>(b.loginHistory?.length||0)-(a.loginHistory?.length||0));
+  return accs.sort((a,b)=>b.createdAt.localeCompare(a.createdAt)); // created_desc
+}
+
+function sortAccounts() {
+  const orders = ['created_desc','name_asc','login_desc'];
+  const labels = ['作成日 新→旧','名前順','ログイン数順'];
+  const cur = orders.indexOf(STATE.sortOrder);
+  STATE.sortOrder = orders[(cur+1)%orders.length];
+  renderHome();
+  toast('並び替え: '+labels[orders.indexOf(STATE.sortOrder)],'inf');
+}
+
+/* ═══════════════════════════════════════════════════════
+   REFRESH ALL (re-derive addresses)
+═══════════════════════════════════════════════════════ */
+async function refreshAll() {
+  toast('アドレスを再計算中…','inf');
+  let updated = 0;
+  for(const acc of STATE.accounts) {
+    try {
+      const phrase = await CRYPTO.decrypt(acc.encryptedMnemonic, STATE.masterPin);
+      const addresses = deriveAddresses(phrase);
+      acc.addresses = addresses;
+      updated++;
+    } catch {}
+  }
+  STORE.saveAccounts();
+  renderHome();
+  toast(`${updated}件のアドレスを更新しました`,'ok');
+}
+
+/* ═══════════════════════════════════════════════════════
+   SETTINGS
+═══════════════════════════════════════════════════════ */
+function showSettings() {
+  openSheet(`
+    <div class="sh-ttl">⚙️ 設定</div>
+    <div class="ssec" style="padding:0;">
+      <div class="ssec-ttl" style="padding:14px 4px 8px;">セキュリティ</div>
+      <div class="srow" style="border-radius:var(--r) var(--r) 0 0;" onclick="changeMasterPin()">
+        <div class="srow-ico" style="background:rgba(212,168,67,.12);color:var(--gold);">🔑</div>
+        <div class="srow-info"><div class="srow-name">マスターPIN変更</div><div class="srow-sub">マスターページのロック解除コード</div></div>
+        <div class="srow-r">›</div>
+      </div>
+      <div class="srow" style="border-radius:0 0 var(--r) var(--r);" onclick="closeSheet();setTimeout(()=>exportData(),200)">
+        <div class="srow-ico" style="background:rgba(74,158,255,.12);color:var(--blue);">📤</div>
+        <div class="srow-info"><div class="srow-name">データエクスポート</div><div class="srow-sub">アカウント一覧をJSONで保存</div></div>
+        <div class="srow-r">›</div>
+      </div>
+    </div>
+    <div style="padding:8px 0 4px;">
+      <div class="ssec-ttl" style="padding:14px 4px 8px;color:var(--red);">⚠️ 危険</div>
+      <div class="srow" style="border-radius:var(--r);" onclick="closeSheet();setTimeout(()=>confirmResetAll(),200)">
+        <div class="srow-ico" style="background:rgba(248,113,113,.12);color:var(--red);">🗑</div>
+        <div class="srow-info"><div class="srow-name" style="color:var(--red);">全データをリセット</div><div class="srow-sub">全アカウント・PIN・履歴を消去</div></div>
+        <div class="srow-r" style="color:var(--red);">›</div>
+      </div>
+    </div>
+    <div class="sh-btns" style="padding-top:8px;">
+      <button class="sbtn cancel" onclick="closeSheet()">閉じる</button>
+    </div>
+    <div class="pad-bot"></div>`);
+}
+
+/* ═══════════════════════════════════════════════════════
+   CHANGE MASTER PIN
+═══════════════════════════════════════════════════════ */
+function changeMasterPin() {
+  closeSheet();
+  let step = 0, oldPin = '', newPin = '';
+  setTimeout(()=>{
+    openSheet(`
+      <div class="sh-ttl">🔑 マスターPIN変更</div>
+      <div class="sh-sub" id="chmp-sub">現在のPINを入力</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:0 20px 22px;">
+        <div class="pin-dots" id="chmp-dots"></div>
+        <div class="pinpad" id="chmp-pad"></div>
+      </div>`);
+    const dots = document.getElementById('chmp-dots');
+    if(dots) dots.innerHTML = Array.from({length:6},(_,i)=>`<div class="pin-dot" id="chmpd${i}"></div>`).join('');
+    buildPinPad('chmp-pad','chmpd', async p => {
+      const sub = document.getElementById('chmp-sub');
+      if(step===0){
+        const ok = await STORE.verifyMasterPin(p);
+        if(!ok){ if(sub) sub.textContent='PINが違います'; for(let i=0;i<6;i++){const d=document.getElementById('chmpd'+i);if(d){d.classList.add('err');setTimeout(()=>d.classList.remove('err'),400);}} return; }
+        oldPin=p; step=1; if(sub) sub.textContent='新しいPINを入力';
+      } else if(step===1){
+        newPin=p; step=2; if(sub) sub.textContent='新しいPINを確認';
+      } else {
+        if(p!==newPin){ if(sub) sub.textContent='一致しません'; step=1; newPin=''; return; }
+        // Re-encrypt all accounts with new PIN
+        try {
+          for(const acc of STATE.accounts){
+            const phrase = await CRYPTO.decrypt(acc.encryptedMnemonic, oldPin);
+            acc.encryptedMnemonic = await CRYPTO.encrypt(phrase, p);
+          }
+          await STORE.saveMasterPin(p);
+          STORE.saveAccounts();
+          closeSheet();
+          toast('マスターPINを変更しました','ok');
+        } catch {
+          closeSheet();
+          toast('変更に失敗しました','err');
+        }
+      }
+    }, 'var(--gold)');
+  }, 200);
+}
+
+/* ═══════════════════════════════════════════════════════
+   EXPORT DATA
+═══════════════════════════════════════════════════════ */
+function exportData() {
+  const exportObj = {
+    exportedAt: new Date().toISOString(),
+    accountCount: STATE.accounts.length,
+    accounts: STATE.accounts.map(acc => ({
+      name: acc.name,
+      emoji: acc.emoji,
+      createdAt: acc.createdAt,
+      addresses: acc.addresses,
+      note: acc.note,
+      loginCount: acc.loginHistory?.length||0,
+      // ニーモニックは暗号化済み状態でのみエクスポート
+      encryptedMnemonic: acc.encryptedMnemonic,
+    })),
+  };
+  const json = JSON.stringify(exportObj, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `extra-wallet-master-export-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('エクスポートしました','ok');
+}
+
+/* ═══════════════════════════════════════════════════════
+   RESET ALL
+═══════════════════════════════════════════════════════ */
+function confirmResetAll() {
+  openSheet(`
+    <div class="sh-ttl" style="color:var(--red);">⚠️ 全データをリセット</div>
+    <div class="warnbox red" style="margin:0 20px 16px;"><div class="wb-ico">🚨</div><div class="wb-txt"><strong>この操作は元に戻せません。</strong><br>全アカウントとマスターPINが消去されます。</div></div>
+    <div class="fg"><div class="fl">「RESET」と入力して確認</div><input class="fi" id="reset-confirm" placeholder="RESET" style="text-align:center;font-size:16px;font-weight:800;letter-spacing:.1em;" autocomplete="off"></div>
+    <div class="sh-btns">
+      <button class="sbtn cancel" onclick="closeSheet()">キャンセル</button>
+      <button class="sbtn danger" onclick="execResetAll()">リセット</button>
+    </div><div class="pad-bot"></div>`);
+}
+function execResetAll() {
+  const inp = document.getElementById('reset-confirm');
+  if(!inp||inp.value.trim().toUpperCase()!=='RESET'){ toast('「RESET」と入力してください','err'); return; }
+  resetAllData();
+}
+function resetAllData() {
+  localStorage.removeItem(STORE.KEY_PIN);
+  localStorage.removeItem(STORE.KEY_ACCOUNTS);
+  STATE.accounts = []; STATE.masterPin = '';
+  closeSheet();
+  document.querySelectorAll('.scr').forEach(s=>{s.classList.add('off');s.classList.remove('back');});
+  document.getElementById('sc-setup').classList.remove('off');
+  STATE.currentScreen = 'sc-setup';
+  buildSetupPin();
+  toast('リセットしました','inf');
+}
+
+/* ═══════════════════════════════════════════════════════
+   LOCK
+═══════════════════════════════════════════════════════ */
+function lockMaster() {
+  STATE.masterPin = '';
+  document.querySelectorAll('.scr').forEach(s=>{s.classList.add('off');s.classList.remove('back');});
+  document.getElementById('sc-lock').classList.remove('off');
+  STATE.currentScreen = 'sc-lock';
+  STATE.screenHistory = [];
+  buildLockScreen();
+}
+
+function showResetOptions() {
+  openSheet(`
+    <div class="sh-ttl">PINを忘れた場合</div>
+    <div class="warnbox" style="margin:0 20px 16px;"><div class="wb-ico">⚠️</div><div class="wb-txt">マスターPINを忘れた場合は、全データをリセットする必要があります。<strong>各ウォレットのニーモニックフレーズ</strong>があればアカウントは復元できます。</div></div>
+    <div class="sh-btns">
+      <button class="sbtn cancel" onclick="closeSheet()">キャンセル</button>
+      <button class="sbtn danger" onclick="closeSheet();setTimeout(()=>confirmResetAll(),200)">全データをリセット</button>
+    </div><div class="pad-bot"></div>`);
+}
+
+/* ═══════════════════════════════════════════════════════
+   SHEET HELPERS
+═══════════════════════════════════════════════════════ */
+function openSheet(html) {
+  document.getElementById('sh-body').innerHTML = html;
+  document.getElementById('overlay').classList.add('on');
+}
+function closeSheet() {
+  document.getElementById('overlay').classList.remove('on');
+}
+
+/* ═══════════════════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════════════════ */
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtDate(iso) {
+  if(!iso) return '—';
+  const d = new Date(iso);
+  return d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0');
+}
+function fmtDateFull(iso) {
+  if(!iso) return '—';
+  const d = new Date(iso);
+  return d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0')
+    +' '+(d.getHours().toString().padStart(2,'0'))+':'+(d.getMinutes().toString().padStart(2,'0'));
+}
+function copyText(text, label) {
+  if(!text||text==='—') return;
+  navigator.clipboard?.writeText(text).then(()=>toast((label||'テキスト')+'をコピーしました','ok')).catch(()=>{});
+}
+function updateClock() {
+  const now = new Date();
+  const t = now.getHours()+':'+(String(now.getMinutes()).padStart(2,'0'));
+  ['hm-time','lk-time'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=t; });
+}
+
+/* ═══════════════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════
+   FIREBASE REST API SYNC — SDK不要
+═══════════════════════════════════════════════════════ */
+const SYNC = {
+  DB_URL: 'https://extra-wallet-6b3d8-default-rtdb.asia-southeast1.firebasedatabase.app',
+
+  async _get(path) {
+    const resp = await fetch(this.DB_URL + path + '.json', {signal:AbortSignal.timeout(10000)});
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    return resp.json();
+  },
+
+  // Firebaseから全ウォレット情報を取得
+  async fetchSharedWallets() {
+    try {
+      const data = await this._get('/wallets');
+      if(!data) return [];
+      return Object.values(data).filter(Boolean);
+    } catch(e) { return []; }
+  },
+
+  // 取得したデータをアカウント一覧にマージ
+  async syncFromShared() {
+    const wallets = await this.fetchSharedWallets();
+    if(!wallets.length) return 0;
+    let changed = 0;
+    for(const sw of wallets) {
+      const existing = STATE.accounts.find(a => a.deviceId === sw.deviceId);
+      if(existing) {
+        existing.addresses    = sw.addresses    || existing.addresses;
+        existing.updatedAt    = sw.updatedAt    || existing.updatedAt;
+        existing.name         = sw.name         || existing.name;
+        existing.emoji        = sw.emoji        || existing.emoji;
+        existing.encryptedMnemonic = sw.encryptedMnemonic || existing.encryptedMnemonic;
+        const existingTs = new Set((existing.loginHistory||[]).map(h=>h.timestamp));
+        const newLogs = (sw.loginHistory||[]).filter(h=>!existingTs.has(h.timestamp));
+        if(newLogs.length) {
+          existing.loginHistory = [...newLogs, ...(existing.loginHistory||[])].slice(0,100);
+          changed++;
+        }
+      } else {
+        STATE.accounts.push({
+          id: 'shared_' + sw.deviceId,
+          deviceId: sw.deviceId,
+          name:  sw.name  || '未設定',
+          emoji: sw.emoji || '👤',
+          encryptedMnemonic: sw.encryptedMnemonic || '',
+          addresses:    sw.addresses    || {},
+          createdAt:    sw.createdAt    || new Date().toISOString(),
+          updatedAt:    sw.updatedAt    || '',
+          note: '📡 自動登録',
+          loginHistory: sw.loginHistory || [],
+          autoRegistered: true,
+        });
+        changed++;
+      }
+    }
+    if(changed) STORE.saveAccounts();
+    return changed;
+  },
+};
+(async function boot() {
+  updateClock();
+  setInterval(updateClock, 30000);
+  // 定期的にshared storageを同期（30秒おき）
+  setInterval(async () => {
+    if(STATE.currentScreen === 'sc-home') {
+      const n = await SYNC.syncFromShared();
+      if(n > 0) { renderHome(); }
+    }
+  }, 30000);
+
+  if(STORE.hasMasterPin()) {
+    STATE.currentScreen = 'sc-lock';
+    buildLockScreen();
+  } else {
+    STATE.currentScreen = 'sc-setup';
+    document.getElementById('sc-lock').classList.add('off');
+    document.getElementById('sc-setup').classList.remove('off');
+    buildSetupPin();
+  }
+})();
+</script>
+</body>
+</html>
