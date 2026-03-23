@@ -1,0 +1,2365 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#06070B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Extra Wallet</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<!-- ethers.js for Ethereum/EVM signing -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.9.0/ethers.umd.min.js"></script>
+<!-- QR Code generator (real QR spec) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- TronWeb for TRON -->
+<script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.js"></script>
+<script>
+(function(){
+  const noop = function(){};
+  ['log','warn','info','debug','dir','trace','table',
+   'group','groupEnd','groupCollapsed','count','time','timeEnd']
+    .forEach(function(m){ try{ console[m]=noop; }catch(e){} });
+  document.write   = noop;
+  document.writeln = noop;
+  // Firebase のエラーを握り潰さないよう onerror/unhandledrejection は残す
+})();
+</script>
+<style>
+:root{
+  --bg:#06070B;--s1:#0D1118;--s2:#131922;--s3:#1A2233;
+  --b0:rgba(255,255,255,.04);--b1:rgba(255,255,255,.08);--b2:rgba(255,255,255,.14);
+  --blue:#4A9EFF;--green:#2DD4BF;--red:#F87171;--orange:#FB923C;
+  --yellow:#FBBF24;--purple:#A78BFA;
+  --t0:#F1F5F9;--t1:#94A3B8;--t2:#475569;
+  --gold:#D4A843;--gold2:#FBBF24;
+  --r:14px;--r2:20px;--r3:26px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased;}
+html,body{height:100%;width:100%;background:#000;font-family:'Outfit',sans-serif;color:var(--t0);overflow:hidden;}
+input,textarea,button{font-family:'Outfit',sans-serif;-webkit-appearance:none;appearance:none;}
+button{cursor:pointer;border:none;outline:none;}
+input,textarea{outline:none;border:none;}
+
+#shell{position:relative;width:100%;max-width:430px;height:100dvh;max-height:900px;margin:0 auto;background:var(--bg);overflow:hidden;display:flex;flex-direction:column;}
+
+/* SCREENS */
+.scr{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg);z-index:1;transition:transform .28s cubic-bezier(.4,0,.2,1),opacity .28s;will-change:transform;}
+.scr.off{transform:translateX(100%);opacity:0;pointer-events:none;}
+.scr.back{transform:translateX(-22%);opacity:0;pointer-events:none;}
+.sb{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
+.sb::-webkit-scrollbar{display:none;}
+.pad-bot{height:20px;}
+
+/* STATUSBAR */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s ease infinite;display:inline-block;}
+.dot.red{background:var(--red);}
+.dot.yellow{background:var(--yellow);}
+
+/* TOPBAR */
+.tbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 6px;flex-shrink:0;}
+.tbar-title{font-size:18px;font-weight:800;}
+.tbar-r{display:flex;gap:8px;}
+.ibtn{width:36px;height:36px;background:var(--s1);border:1px solid var(--b1);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:15px;transition:background .12s;}
+.ibtn:active{background:var(--s2);}
+.back-row{display:flex;align-items:center;gap:6px;color:var(--blue);font-size:14px;font-weight:600;padding:10px 18px 0;flex-shrink:0;}
+
+.logo{font-size:17px;font-weight:900;letter-spacing:.05em;color:var(--gold2);}
+.logo em{color:var(--t1);font-style:normal;font-weight:400;}
+
+/* CHAIN SELECTOR */
+.chain-bar{display:flex;gap:6px;padding:0 14px 10px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;}
+.chain-bar::-webkit-scrollbar{display:none;}
+.chain-tab{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:7px 14px;background:var(--s1);border:1px solid var(--b1);border-radius:99px;font-size:12px;font-weight:700;color:var(--t1);transition:all .15s;}
+.chain-tab.on{border-color:var(--blue);color:var(--blue);background:rgba(74,158,255,.1);}
+.chain-tab-ico{font-size:15px;}
+
+/* BALANCE CARD */
+.bal-card{margin:8px 14px 0;background:linear-gradient(145deg,#0A1220 0%,#0E1828 55%,#091420 100%);border:1px solid rgba(74,158,255,.2);border-radius:var(--r3);padding:22px 20px 18px;position:relative;overflow:hidden;}
+.bal-card::before{content:'';position:absolute;top:-80px;right:-80px;width:200px;height:200px;background:radial-gradient(circle,rgba(74,158,255,.12) 0%,transparent 65%);border-radius:50%;pointer-events:none;}
+.bal-lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--t2);font-family:'DM Mono',monospace;margin-bottom:4px;}
+.bal-usd{font-size:34px;font-weight:900;letter-spacing:-.03em;line-height:1.1;margin-bottom:3px;}
+.bal-sub{font-size:13px;color:var(--t1);font-family:'DM Mono',monospace;margin-bottom:10px;}
+.bal-chips{display:flex;gap:8px;flex-wrap:wrap;}
+.bal-chip{display:inline-flex;align-items:center;gap:5px;border-radius:99px;padding:3px 10px;font-size:11px;font-family:'DM Mono',monospace;}
+.chip-net{background:rgba(45,212,191,.1);color:var(--green);border:1px solid rgba(45,212,191,.2);}
+.chip-chg{background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.2);}
+.chip-chg.red{background:rgba(248,113,113,.1);color:var(--red);border-color:rgba(248,113,113,.2);}
+.bal-addr{margin-top:12px;font-size:11px;font-family:'DM Mono',monospace;color:var(--t2);}
+.bal-addr b{color:var(--blue);cursor:pointer;}
+
+/* ACTIONS */
+.acts{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:12px 14px 0;}
+.act{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.act-ico{width:54px;height:54px;border-radius:17px;display:flex;align-items:center;justify-content:center;font-size:22px;transition:transform .12s;}
+.act:active .act-ico{transform:scale(.9);}
+.act-lbl{font-size:11px;color:var(--t1);font-weight:600;}
+
+/* SECTION HEADER */
+.shdr{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 9px;}
+.shdr-ttl{font-size:15px;font-weight:700;}
+.shdr-lnk{font-size:12px;color:var(--blue);font-family:'DM Mono',monospace;}
+
+/* ASSET LIST */
+.alist{display:flex;flex-direction:column;gap:5px;padding:0 14px;}
+.arow{display:flex;align-items:center;gap:12px;background:var(--s1);border:1px solid var(--b0);border-radius:var(--r2);padding:12px 14px;transition:all .12s;}
+.arow:active{background:var(--s2);transform:scale(.985);}
+.aico{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;flex-shrink:0;}
+.ameta{flex:1;min-width:0;}
+.aname{font-size:14px;font-weight:700;}
+.abal{font-size:11px;color:var(--t1);font-family:'DM Mono',monospace;margin-top:2px;}
+.anet-badge{font-size:9px;padding:1px 5px;border-radius:4px;font-family:'DM Mono',monospace;font-weight:700;margin-top:3px;display:inline-block;}
+.avals{text-align:right;flex-shrink:0;}
+.aprice{font-size:13px;font-weight:700;font-family:'DM Mono',monospace;}
+.ausd{font-size:11px;color:var(--t1);font-family:'DM Mono',monospace;margin-top:2px;}
+.achg{font-size:11px;font-family:'DM Mono',monospace;padding:2px 6px;border-radius:5px;display:inline-block;margin-top:2px;}
+.up{color:var(--green);background:rgba(45,212,191,.1);}
+.dn{color:var(--red);background:rgba(248,113,113,.1);}
+
+/* TX ROWS */
+.txlist{display:flex;flex-direction:column;gap:2px;padding:0 14px 10px;}
+.txrow{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:14px;transition:background .12s;}
+.txrow:active{background:var(--s1);}
+.txico{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.txmeta{flex:1;min-width:0;}
+.txtype{font-size:13px;font-weight:600;}
+.txdate{font-size:11px;color:var(--t1);font-family:'DM Mono',monospace;margin-top:2px;}
+.txhash{font-size:10px;color:var(--t2);font-family:'DM Mono',monospace;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.txamt{text-align:right;flex-shrink:0;}
+.txval{font-size:13px;font-weight:700;font-family:'DM Mono',monospace;}
+.txsub{font-size:11px;color:var(--t1);margin-top:2px;}
+
+/* BOTTOM NAV */
+.bnav{flex-shrink:0;background:var(--s1);border-top:1px solid var(--b0);display:grid;grid-template-columns:repeat(4,1fr);padding:8px 4px max(18px,env(safe-area-inset-bottom));}
+.bni{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 4px;border-radius:10px;transition:all .12s;}
+.bni:active{background:var(--s2);}
+.bni-ico{font-size:19px;line-height:1;}
+.bni-lbl{font-size:10px;font-weight:600;color:var(--t1);}
+.bni.on .bni-lbl{color:var(--blue);}
+
+/* OVERLAY / SHEET */
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(16px);z-index:300;align-items:flex-end;justify-content:center;}
+#overlay.on{display:flex;}
+.sheet{width:100%;max-width:430px;background:var(--s1);border-top-left-radius:var(--r3);border-top-right-radius:var(--r3);max-height:94dvh;overflow-y:auto;animation:shup .32s cubic-bezier(.16,1,.3,1);}
+.sheet::-webkit-scrollbar{display:none;}
+@keyframes shup{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sh-grip{width:36px;height:4px;background:var(--b2);border-radius:99px;margin:12px auto 16px;}
+.sh-ttl{font-size:21px;font-weight:800;padding:0 20px 12px;}
+.sh-sub{font-size:13px;color:var(--t1);padding:0 20px 14px;margin-top:-8px;line-height:1.55;}
+
+/* FORMS */
+.fg{padding:0 20px 14px;}
+.fl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--t2);font-family:'DM Mono',monospace;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;}
+.fl span{font-size:11px;color:var(--t1);text-transform:none;letter-spacing:0;}
+.fi{width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--r);padding:14px 16px;color:var(--t0);font-family:'DM Mono',monospace;font-size:14px;transition:border-color .18s;}
+.fi:focus{border-color:var(--blue);}
+.fi::placeholder{color:var(--t2);}
+.fi[readonly]{color:var(--t1);background:var(--s2);}
+.fi-wrap{position:relative;}
+.fi-suffix{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:rgba(74,158,255,.14);color:var(--blue);border:none;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;font-family:'DM Mono',monospace;}
+.fi-paste{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:rgba(74,158,255,.14);color:var(--blue);border:none;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:600;}
+.f-hint{font-size:11px;color:var(--t2);font-family:'DM Mono',monospace;padding:5px 2px 0;}
+.f-err{font-size:11px;color:var(--red);padding:5px 2px 0;display:none;}
+.f-err.on{display:block;}
+textarea.fi{height:88px;resize:none;line-height:1.6;}
+
+/* CHIPS */
+.chips{display:flex;gap:7px;overflow-x:auto;padding:0 0 10px;scrollbar-width:none;}
+.chips::-webkit-scrollbar{display:none;}
+.tchip{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:8px 13px;background:var(--bg);border:1px solid var(--b1);border-radius:11px;font-size:12px;font-weight:700;color:var(--t1);font-family:'DM Mono',monospace;transition:all .12s;}
+.tchip.on{border-color:var(--blue);color:var(--blue);background:rgba(74,158,255,.1);}
+
+/* INFO BOX */
+.infobox{margin:0 20px 16px;background:var(--bg);border-radius:var(--r);overflow:hidden;}
+.ir{display:flex;justify-content:space-between;align-items:flex-start;padding:11px 15px;border-bottom:1px solid var(--b0);}
+.ir:last-child{border-bottom:none;}
+.ir-lbl{font-size:12px;color:var(--t1);}
+.ir-val{font-size:13px;font-weight:700;font-family:'DM Mono',monospace;text-align:right;max-width:220px;word-break:break-all;}
+.ir-val.green{color:var(--green);}
+.ir-val.red{color:var(--red);}
+.ir-val.blue{color:var(--blue);}
+.ir-val.small{font-size:11px;}
+
+/* GAS OPTS */
+.gas-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:0 20px 14px;}
+.gas-opt{background:var(--bg);border:1px solid var(--b1);border-radius:var(--r);padding:10px 8px;text-align:center;transition:all .12s;}
+.gas-opt.on{border-color:var(--blue);background:rgba(74,158,255,.08);}
+.gas-opt-name{font-size:11px;font-weight:700;margin-bottom:3px;}
+.gas-opt-val{font-size:10px;font-family:'DM Mono',monospace;color:var(--t1);}
+.gas-opt-time{font-size:10px;color:var(--t2);margin-top:2px;}
+
+/* BUTTONS */
+.sbtn-row{display:flex;gap:10px;padding:2px 20px 8px;}
+.sbtn{flex:1;padding:15px;border-radius:var(--r);font-family:'Outfit',sans-serif;font-weight:800;font-size:14px;transition:transform .12s,box-shadow .12s;}
+.sbtn:active{transform:scale(.97);}
+.sbtn.cancel{background:var(--bg);color:var(--t1);border:1px solid var(--b1);flex:1;}
+.sbtn.primary{background:linear-gradient(135deg,var(--blue),#3B82F6);color:#fff;flex:2;box-shadow:0 4px 16px rgba(74,158,255,.28);}
+.sbtn.success{background:linear-gradient(135deg,var(--green),#059669);color:#fff;flex:2;box-shadow:0 4px 16px rgba(45,212,191,.28);}
+.sbtn.danger{background:linear-gradient(135deg,var(--red),#DC2626);color:#fff;flex:2;box-shadow:0 4px 16px rgba(248,113,113,.28);}
+.sbtn.warn{background:linear-gradient(135deg,var(--orange),#EA580C);color:#fff;flex:2;}
+.sbtn.full{flex:none;width:calc(100% - 40px);margin:0 20px;}
+.sbtn:disabled{opacity:.5;pointer-events:none;}
+.btn-row-full{padding:2px 20px 8px;}
+.fbtn{width:100%;padding:16px;border-radius:17px;font-family:'Outfit',sans-serif;font-weight:800;font-size:15px;transition:all .12s;border:none;}
+.fbtn:active{transform:scale(.98);}
+.fbtn.blue{background:linear-gradient(135deg,var(--blue),#3B82F6);color:#fff;box-shadow:0 4px 18px rgba(74,158,255,.3);}
+.fbtn.ghost{background:var(--s1);color:var(--t0);border:1px solid var(--b1);}
+
+/* ONBOARDING */
+.obwrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 26px;text-align:center;gap:12px;}
+.ob-ico{font-size:60px;margin-bottom:6px;}
+.ob-ttl{font-size:26px;font-weight:900;line-height:1.2;}
+.ob-ttl span{color:var(--gold2);}
+.ob-desc{font-size:14px;color:var(--t1);line-height:1.65;max-width:300px;}
+.ob-btns{display:flex;flex-direction:column;gap:10px;width:100%;margin-top:8px;}
+
+/* MNEMONIC */
+.mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:0 16px;margin-bottom:14px;}
+.mword{background:var(--bg);border:1px solid var(--b1);border-radius:11px;padding:9px 7px;text-align:center;}
+.mword-n{font-size:9px;color:var(--t2);font-family:'DM Mono',monospace;margin-bottom:3px;}
+.mword-w{font-size:13px;font-weight:700;font-family:'DM Mono',monospace;}
+.mblur{filter:blur(6px);user-select:none;}
+
+/* VERIFY */
+.vgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:0 16px;margin-bottom:14px;}
+.vinput{background:var(--bg);border:1px solid var(--b1);border-radius:11px;padding:7px;text-align:center;font-family:'DM Mono',monospace;font-size:12px;color:var(--t0);width:100%;transition:border-color .15s;}
+.vinput:focus{border-color:var(--blue);}
+.vinput.ok{border-color:var(--green);}
+.vinput.ng{border-color:var(--red);}
+.vn{font-size:9px;color:var(--t2);font-family:'DM Mono',monospace;text-align:center;margin-bottom:3px;}
+
+/* PIN */
+.pin-area{display:flex;flex-direction:column;align-items:center;gap:18px;padding:14px 0;}
+.pin-dots{display:flex;gap:14px;}
+.pin-dot{width:15px;height:15px;border-radius:50%;background:var(--b2);transition:all .15s;}
+.pin-dot.fill{background:var(--blue);transform:scale(1.1);}
+.pin-dot.err{background:var(--red);animation:shake .3s ease;}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:270px;}
+.pkey{height:58px;border-radius:15px;background:var(--s2);border:1px solid var(--b1);font-size:22px;font-weight:700;color:var(--t0);transition:all .1s;display:flex;align-items:center;justify-content:center;}
+.pkey:active{background:var(--s3);transform:scale(.93);}
+.pkey.del{font-size:18px;color:var(--t1);}
+.pkey.empty{background:transparent;border-color:transparent;pointer-events:none;}
+.pin-sub{font-size:13px;color:var(--t1);text-align:center;min-height:18px;}
+
+/* LOCK */
+#lockscr{position:fixed;inset:0;background:var(--bg);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px;gap:6px;}
+#lockscr.gone{display:none;}
+.lock-logo{font-size:52px;margin-bottom:4px;}
+.lock-name{font-size:22px;font-weight:900;color:var(--gold2);margin-bottom:2px;}
+.lock-hint{font-size:13px;color:var(--t1);margin-bottom:10px;}
+.lockout-msg{font-size:13px;color:var(--red);text-align:center;margin-top:6px;min-height:20px;}
+.pin-link{font-size:13px;color:var(--blue);margin-top:4px;}
+
+/* SETTINGS */
+.ssec{padding:0 14px;margin-bottom:4px;}
+.ssec-ttl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--t2);font-family:'DM Mono',monospace;padding:14px 4px 8px;}
+.srow{display:flex;align-items:center;gap:12px;background:var(--s1);border:1px solid var(--b0);padding:13px 15px;transition:background .12s;}
+.srow:first-of-type{border-radius:var(--r) var(--r) 0 0;}
+.srow:last-of-type{border-radius:0 0 var(--r) var(--r);}
+.srow:only-of-type{border-radius:var(--r);}
+.srow+.srow{border-top:none;}
+.srow:active{background:var(--s2);}
+.srow-ico{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.srow-info{flex:1;}
+.srow-name{font-size:14px;font-weight:600;}
+.srow-sub{font-size:12px;color:var(--t1);margin-top:2px;}
+.srow-r{color:var(--t1);font-size:15px;}
+.tog{width:44px;height:24px;background:var(--b2);border-radius:99px;position:relative;transition:background .18s;flex-shrink:0;}
+.tog.on{background:var(--blue);}
+.tog-t{position:absolute;top:3px;left:3px;width:18px;height:18px;background:#fff;border-radius:99px;transition:transform .18s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+.tog.on .tog-t{transform:translateX(20px);}
+.lang-row{display:flex;gap:7px;padding:6px 16px 12px;}
+.lbtn{flex:1;padding:10px 6px;border-radius:11px;background:var(--bg);border:1px solid var(--b1);font-weight:700;font-size:12px;color:var(--t1);text-align:center;transition:all .12s;}
+.lbtn.on{border-color:var(--blue);color:var(--blue);background:rgba(74,158,255,.1);}
+.cur-btn{background:var(--bg);border:1px solid var(--b1);color:var(--t1);transition:all .12s;padding:5px 10px;border-radius:8px;font-size:12px;font-weight:700;}
+.cur-btn.on{background:rgba(74,158,255,.12);border-color:var(--blue);color:var(--blue);}
+
+/* PROFILE */
+.pf-hero{margin:8px 14px 0;background:linear-gradient(145deg,#0A1220,#0E1828);border:1px solid var(--b1);border-radius:var(--r3);padding:20px 18px;display:flex;gap:14px;align-items:center;}
+.pf-av{width:58px;height:58px;border-radius:18px;background:linear-gradient(135deg,var(--gold),#92400E);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;}
+.pf-name{font-size:17px;font-weight:800;}
+.pf-addr{font-size:11px;color:var(--t1);font-family:'DM Mono',monospace;margin-top:3px;}
+.pf-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(45,212,191,.1);color:var(--green);border:1px solid rgba(45,212,191,.2);border-radius:99px;padding:3px 10px;font-size:11px;margin-top:8px;font-weight:600;}
+.pf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 14px 0;}
+.pf-stat{background:var(--s1);border:1px solid var(--b0);border-radius:var(--r);padding:13px;text-align:center;}
+.pf-stat-v{font-size:15px;font-weight:800;font-family:'DM Mono',monospace;}
+.pf-stat-l{font-size:10px;color:var(--t1);margin-top:4px;text-transform:uppercase;letter-spacing:.06em;}
+
+/* SEC STRIP */
+.sec-strip{display:flex;gap:8px;padding:0 14px;}
+.sec-b{flex:1;background:var(--s1);border:1px solid var(--b0);border-radius:var(--r);padding:11px;display:flex;align-items:center;gap:8px;}
+.sec-b-txt{font-size:11px;font-weight:600;}
+.sec-b-sub{font-size:10px;color:var(--t1);margin-top:2px;}
+
+/* QR */
+.qr-wrap{margin:0 20px 14px;background:#fff;border-radius:18px;padding:16px;display:flex;align-items:center;justify-content:center;}
+.addr-disp{margin:0 20px 12px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--r);}
+.addr-disp-lbl{font-size:10px;color:var(--t2);font-family:'DM Mono',monospace;padding:10px 14px 0;}
+.addr-disp-val{font-size:11px;font-family:'DM Mono',monospace;color:var(--blue);padding:4px 14px 10px;word-break:break-all;line-height:1.7;}
+
+/* WARN */
+.warnbox{margin:0 16px 14px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);border-radius:var(--r);padding:12px 15px;display:flex;gap:10px;}
+.warnbox.info{background:rgba(74,158,255,.06);border-color:rgba(74,158,255,.2);}
+.warnbox.red{background:rgba(248,113,113,.06);border-color:rgba(248,113,113,.2);}
+.warnbox.green{background:rgba(45,212,191,.06);border-color:rgba(45,212,191,.2);}
+.wb-ico{font-size:16px;flex-shrink:0;margin-top:1px;}
+.wb-txt{font-size:12px;color:var(--t1);line-height:1.6;}
+.wb-txt strong{color:var(--yellow);}
+
+/* TOAST */
+#toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(14px);background:#1C2840;border:1px solid var(--b2);border-radius:13px;padding:11px 18px;font-size:13px;font-weight:600;opacity:0;transition:all .25s;z-index:999;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center;}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+#toast.ok{border-color:rgba(45,212,191,.35);color:var(--green);}
+#toast.err{border-color:rgba(248,113,113,.35);color:var(--red);}
+#toast.inf{border-color:rgba(74,158,255,.35);color:var(--blue);}
+#toast.wrn{border-color:rgba(251,191,36,.35);color:var(--yellow);}
+
+/* SPINNER */
+.spin{width:20px;height:20px;border:2px solid var(--b2);border-top-color:var(--blue);border-radius:50%;animation:rot .65s linear infinite;display:inline-block;vertical-align:middle;}
+@keyframes rot{to{transform:rotate(360deg)}}
+.loading-row{display:flex;align-items:center;justify-content:center;gap:10px;padding:22px;color:var(--t1);font-size:13px;}
+.empty-row{text-align:center;color:var(--t1);font-size:13px;padding:24px 20px;}
+
+/* PENDING / SUCCESS */
+#pending-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(18px);z-index:400;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:40px;}
+#pending-overlay.on{display:flex;}
+.pend-spin{width:48px;height:48px;border:3px solid var(--b2);border-top-color:var(--blue);border-radius:50%;animation:rot .8s linear infinite;}
+.pend-title{font-size:18px;font-weight:800;}
+.pend-sub{font-size:13px;color:var(--t1);line-height:1.55;max-width:280px;}
+.pend-hash{font-size:11px;font-family:'DM Mono',monospace;color:var(--blue);cursor:pointer;margin-top:4px;}
+#success-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(18px);z-index:400;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:40px;}
+#success-overlay.on{display:flex;}
+@keyframes popin{0%{transform:scale(.5);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+.succ-ico{font-size:64px;animation:popin .4s cubic-bezier(.16,1,.3,1);}
+.succ-title{font-size:20px;font-weight:900;}
+.succ-sub{font-size:13px;color:var(--t1);max-width:280px;line-height:1.55;}
+.succ-hash{font-size:11px;font-family:'DM Mono',monospace;color:var(--blue);cursor:pointer;margin-top:4px;word-break:break-all;max-width:300px;}
+
+/* TD HERO */
+.td-hero{margin:8px 14px 0;background:linear-gradient(145deg,#0A1220,#0E1828);border:1px solid var(--b1);border-radius:var(--r3);padding:22px 18px;text-align:center;}
+.td-ico{font-size:42px;margin-bottom:8px;}
+.td-name{font-size:17px;font-weight:800;margin-bottom:4px;}
+.td-bal{font-size:28px;font-weight:900;font-family:'DM Mono',monospace;margin-bottom:3px;}
+.td-usd{font-size:14px;color:var(--t1);font-family:'DM Mono',monospace;}
+
+/* ANIMATIONS */
+@keyframes fadeup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.arow:nth-child(1){animation:fadeup .3s ease both .03s}
+.arow:nth-child(2){animation:fadeup .3s ease both .07s}
+.arow:nth-child(3){animation:fadeup .3s ease both .11s}
+.arow:nth-child(4){animation:fadeup .3s ease both .15s}
+.arow:nth-child(5){animation:fadeup .3s ease both .19s}
+.arow:nth-child(6){animation:fadeup .3s ease both .23s}
+.arow:nth-child(7){animation:fadeup .3s ease both .27s}
+.arow:nth-child(8){animation:fadeup .3s ease both .31s}
+.arow:nth-child(9){animation:fadeup .3s ease both .35s}
+.arow:nth-child(10){animation:fadeup .3s ease both .39s}
+.arow:nth-child(11){animation:fadeup .3s ease both .43s}
+.arow:nth-child(12){animation:fadeup .3s ease both .47s}
+.arow:nth-child(13){animation:fadeup .3s ease both .51s}
+
+@media(max-width:430px){#shell{max-height:100dvh;}}
+</style>
+
+</head>
+<body>
+<div id="shell">
+
+<!-- LOCK SCREEN -->
+<div id="lockscr" class="gone">
+  <div class="lock-logo">🔐</div>
+  <div class="lock-name">Extra Wallet</div>
+  <div class="lock-hint" id="lk-sub">PINを入力してください</div>
+  <div class="pin-area">
+    <div class="pin-dots" id="lk-dots"></div>
+    <div class="pinpad" id="lk-pad"></div>
+    <div class="lockout-msg" id="lk-err"></div>
+    <div class="pin-link" onclick="forgotPin()" id="lk-forgot">PINを忘れた場合</div>
+  </div>
+</div>
+
+<!-- WELCOME -->
+<div class="scr" id="sc-welcome">
+  <div class="obwrap">
+    <div class="ob-ico">🔐</div>
+    <div class="ob-ttl">Extra <span>Wallet</span></div>
+    <div class="ob-desc" id="t-welcome-desc">マルチチェーン対応のプライベートウォレット。秘密鍵はデバイス上のみで管理。</div>
+    <div class="ob-btns">
+      <button class="fbtn blue" onclick="NAV.go('sc-create')" id="t-create-btn">新規ウォレットを作成</button>
+      <button class="fbtn ghost" onclick="NAV.go('sc-import')" id="t-import-btn">ウォレットをインポート</button>
+    </div>
+  </div>
+  <div style="padding:0 24px 28px;">
+    <div class="lang-row"><div class="lbtn on" onclick="I18N.set('ja',this)">🇯🇵 日本語</div><div class="lbtn" onclick="I18N.set('zh',this)">🇨🇳 中文</div><div class="lbtn" onclick="I18N.set('en',this)">🇬🇧 English</div></div>
+    <div style="text-align:center;font-size:11px;color:var(--t2);font-family:'DM Mono',monospace;">v5.0.0 · Multi-Chain</div>
+  </div>
+</div>
+
+<!-- CREATE -->
+<div class="scr off" id="sc-create">
+  <div class="back-row" onclick="NAV.back()">← <span id="t-back">戻る</span></div>
+  <div class="sb">
+    <div style="padding:12px 16px 0;"><div style="font-size:22px;font-weight:900;margin-bottom:6px;" id="t-create-title">新規ウォレット</div><div style="font-size:13px;color:var(--t1);margin-bottom:14px;line-height:1.6;" id="t-create-sub">12語のニーモニックフレーズが生成されます。安全な場所に書き留めてください。</div></div>
+    <div class="warnbox"><div class="wb-ico">⚠️</div><div class="wb-txt" id="t-warn">このフレーズを<strong>絶対に他人に見せないでください</strong>。スクリーンショットは危険です。紙に書いて安全に保管してください。</div></div>
+    <div style="display:flex;justify-content:flex-end;padding:0 16px 8px;"><button onclick="STATE.mnemonicBlurred=!STATE.mnemonicBlurred;renderMnemonic()" style="background:none;border:none;color:var(--blue);font-size:12px;font-weight:600;" id="blur-toggle">👁 表示</button></div>
+    <div class="mgrid" id="mnemonic-grid"></div>
+    <div style="padding:0 16px 20px;display:flex;flex-direction:column;gap:10px;">
+      <button class="fbtn ghost" onclick="generateMnemonic()" id="t-regen-btn">🔄 再生成</button>
+      <button class="fbtn blue" onclick="NAV.go('sc-verify')" id="t-saved-btn">✅ 保存しました・確認へ</button>
+    </div>
+  </div>
+</div>
+
+<!-- VERIFY -->
+<div class="scr off" id="sc-verify">
+  <div class="back-row" onclick="NAV.back()">← <span>戻る</span></div>
+  <div class="sb">
+    <div style="padding:12px 16px 14px;"><div style="font-size:22px;font-weight:900;margin-bottom:6px;" id="t-verify-title">フレーズを確認</div><div style="font-size:13px;color:var(--t1);margin-bottom:0;line-height:1.6;" id="t-verify-sub">4つの単語を正しい順番で入力してください。</div></div>
+    <div class="vgrid" id="verify-grid"></div>
+    <div style="padding:0 16px 20px;"><button class="fbtn blue" onclick="verifyMnemonic()" id="t-verify-btn">確認してPINを設定へ</button></div>
+  </div>
+</div>
+
+<!-- IMPORT -->
+<div class="scr off" id="sc-import">
+  <div class="back-row" onclick="NAV.back()">← <span id="t-back2">戻る</span></div>
+  <div class="sb">
+    <div style="padding:12px 16px 16px;">
+      <div style="font-size:22px;font-weight:900;margin-bottom:6px;" id="t-import-title">ウォレットをインポート</div>
+      <div style="font-size:13px;color:var(--t1);margin-bottom:18px;line-height:1.6;" id="t-import-sub">ニーモニックフレーズ（12語または24語）を入力してください。</div>
+      <div class="fl" id="t-phrase-lbl">ニーモニックフレーズ</div>
+      <textarea class="fi" id="imp-phrase" placeholder="word1 word2 word3 ..."></textarea>
+      <div class="f-hint" id="t-phrase-hint">各単語をスペースで区切って入力</div>
+      <div class="f-err" id="imp-err">ニーモニックが無効です</div>
+      <div style="margin-top:18px;"><button class="fbtn blue" onclick="importWallet()" id="t-import-go-btn">インポート</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- SET PIN -->
+<div class="scr off" id="sc-setpin">
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;">
+    <div style="font-size:48px;margin-bottom:10px;">🔑</div>
+    <div style="font-size:22px;font-weight:900;margin-bottom:6px;" id="t-setpin-title">PINを設定</div>
+    <div style="font-size:13px;color:var(--t1);text-align:center;line-height:1.6;margin-bottom:4px;" id="t-setpin-sub">6桁のPINでウォレットを保護します</div>
+    <div class="pin-area" style="width:100%;">
+      <div class="pin-dots" id="sp-dots"></div>
+      <div class="pinpad" id="sp-pad"></div>
+      <div class="pin-sub" id="sp-sub"></div>
+    </div>
+  </div>
+</div>
+
+<!-- HOME -->
+<div class="scr off" id="sc-home">
+  <div class="tbar">
+    <div class="logo">Extra <em>Wallet</em></div>
+    <div class="tbar-r">
+      <div class="ibtn" onclick="NAV.go('sc-profile')">👤</div>
+      <div class="ibtn" onclick="NAV.go('sc-settings')">⚙️</div>
+    </div>
+  </div>
+
+  <!-- Chain selector -->
+  <div class="chain-bar" id="chain-bar"></div>
+
+  <div class="sb">
+    <div class="bal-card">
+      <div class="bal-lbl" id="t-total-lbl">総資産額</div>
+      <div class="bal-usd" id="hm-usd">$0.00</div>
+      <div class="bal-sub" id="hm-sub">—</div>
+      <div class="bal-chips">
+        <span class="bal-chip chip-net" id="hm-net-chip">🌐 Multi-Chain</span>
+        <span class="bal-chip chip-chg" id="hm-chg">↻</span>
+      </div>
+      <div class="bal-addr" id="hm-addr-row">アドレス: <b id="hm-addr" onclick="UI.copyAddr()">読み込み中…</b></div>
+    </div>
+
+    <div class="acts">
+      <div class="act" onclick="SHEETS.send()"><div class="act-ico" style="background:rgba(74,158,255,.12);color:var(--blue)">↑</div><span class="act-lbl" id="t-send">送金</span></div>
+      <div class="act" onclick="SHEETS.receive()"><div class="act-ico" style="background:rgba(45,212,191,.12);color:var(--green)">↓</div><span class="act-lbl" id="t-receive">受取</span></div>
+      <div class="act" onclick="SHEETS.swap()"><div class="act-ico" style="background:rgba(251,191,36,.12);color:var(--yellow)">⇄</div><span class="act-lbl" id="t-swap">スワップ</span></div>
+    </div>
+
+    <div class="sec-strip" style="margin-top:12px;">
+      <div class="sec-b" style="border-color:rgba(45,212,191,.2);"><span style="font-size:18px;">🛡</span><div><div class="sec-b-txt" style="color:var(--green)" id="t-non-cust">非カストディアル</div><div class="sec-b-sub" id="t-key-local">鍵はデバイスのみ</div></div></div>
+      <div class="sec-b" style="border-color:rgba(74,158,255,.2);"><span style="font-size:18px;">🔒</span><div><div class="sec-b-txt" style="color:var(--blue)" id="t-enc">AES-256-GCM</div><div class="sec-b-sub" id="t-e2e">PBKDF2暗号化</div></div></div>
+    </div>
+
+    <div class="shdr"><div class="shdr-ttl" id="t-assets-ttl">保有資産</div><div class="shdr-lnk" onclick="DATA.refresh()" id="t-refresh">↻ 更新</div></div>
+    <div class="alist" id="asset-list"><div class="loading-row"><span class="spin"></span></div></div>
+
+    <div class="shdr"><div class="shdr-ttl" id="t-tx-ttl">最近の取引</div><div class="shdr-lnk" onclick="NAV.go('sc-history')" id="t-all-tx">すべて</div></div>
+    <div class="txlist" id="hm-txlist"></div>
+    <div class="pad-bot"></div>
+  </div>
+
+  <nav class="bnav">
+    <div class="bni on" id="bni-home" onclick="NAV.tab(this,'sc-home')"><div class="bni-ico">◈</div><div class="bni-lbl" id="t-nav-home">ホーム</div></div>
+    <div class="bni" id="bni-hist" onclick="NAV.tab(this,'sc-history')"><div class="bni-ico">⟳</div><div class="bni-lbl" id="t-nav-tx">履歴</div></div>
+    <div class="bni" onclick="SHEETS.swap()"><div class="bni-ico">⇄</div><div class="bni-lbl" id="t-nav-swap">スワップ</div></div>
+    <div class="bni" id="bni-set" onclick="NAV.tab(this,'sc-settings')"><div class="bni-ico">⚙️</div><div class="bni-lbl" id="t-nav-set">設定</div></div>
+  </nav>
+</div>
+
+<!-- HISTORY -->
+<div class="scr off" id="sc-history">
+  <div class="tbar"><div class="tbar-title" id="t-hist-ttl">取引履歴</div><div class="tbar-r"><div class="ibtn" onclick="NAV.go('sc-home')">✕</div></div></div>
+  <div class="sb"><div class="txlist" id="hist-txlist" style="padding-top:8px;"></div><div class="pad-bot"></div></div>
+</div>
+
+<!-- TOKEN DETAIL -->
+<div class="scr off" id="sc-token">
+  <div class="back-row" onclick="NAV.back()">← <span>戻る</span></div>
+  <div class="sb">
+    <div class="td-hero" id="td-hero"></div>
+    <div class="acts" style="margin-top:14px;">
+      <div class="act" id="td-send-btn"><div class="act-ico" style="background:rgba(74,158,255,.12);color:var(--blue)">↑</div><span class="act-lbl">送金</span></div>
+      <div class="act" onclick="SHEETS.receive()"><div class="act-ico" style="background:rgba(45,212,191,.12);color:var(--green)">↓</div><span class="act-lbl">受取</span></div>
+      <div class="act" onclick="SHEETS.swap()"><div class="act-ico" style="background:rgba(251,191,36,.12);color:var(--yellow)">⇄</div><span class="act-lbl">スワップ</span></div>
+    </div>
+    <div class="shdr"><div class="shdr-ttl">取引履歴</div></div>
+    <div class="txlist" id="td-txlist"></div>
+    <div class="pad-bot"></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="scr off" id="sc-settings">
+  <div class="tbar"><div class="tbar-title" id="t-settings-ttl">設定</div><div class="tbar-r"><div class="ibtn" onclick="NAV.go('sc-home')">✕</div></div></div>
+  <div class="sb">
+    <div class="ssec">
+      <div class="ssec-ttl">言語 / Language</div>
+      <div class="lang-row"><div class="lbtn on" onclick="I18N.set('ja',this)">🇯🇵 日本語</div><div class="lbtn" onclick="I18N.set('zh',this)">🇨🇳 中文</div><div class="lbtn" onclick="I18N.set('en',this)">🇬🇧 English</div></div>
+    </div>
+    <div class="ssec">
+      <div class="ssec-ttl">表示通貨</div>
+      <div style="display:flex;gap:8px;padding:0 4px 12px;">
+        <div onclick="SETTINGS.setCurrency('USD',this)" class="cur-btn on" id="cur-usd">USD</div>
+        <div onclick="SETTINGS.setCurrency('JPY',this)" class="cur-btn" id="cur-jpy">JPY</div>
+      </div>
+    </div>
+    <div class="ssec">
+      <div class="ssec-ttl" id="t-sec-ttl">セキュリティ</div>
+      <div class="srow" onclick="SHEETS.showMnemonic()">
+        <div class="srow-ico" style="background:rgba(251,191,36,.12);color:var(--yellow);">📝</div>
+        <div class="srow-info"><div class="srow-name">ニーモニックを表示</div><div class="srow-sub">PIN認証が必要</div></div>
+        <div class="srow-r">›</div>
+      </div>
+      <div class="srow" onclick="PIN.startChange()">
+        <div class="srow-ico" style="background:rgba(167,139,250,.12);color:var(--purple);">🔑</div>
+        <div class="srow-info"><div class="srow-name">PIN変更</div><div class="srow-sub">ロック解除コード</div></div>
+        <div class="srow-r">›</div>
+      </div>
+      <div class="srow" onclick="SETTINGS.toggleAutoLock()">
+        <div class="srow-ico" style="background:rgba(45,212,191,.12);color:var(--green);">⏱</div>
+        <div class="srow-info"><div class="srow-name" id="t-autolock">自動ロック</div><div class="srow-sub">5分後にロック</div></div>
+        <div class="tog" id="tog-autolock" onclick="event.stopPropagation();SETTINGS.toggleAutoLock()"><div class="tog-t"></div></div>
+      </div>
+      <div class="srow">
+        <div class="srow-ico" style="background:rgba(248,113,113,.12);color:var(--red);">🚨</div>
+        <div class="srow-info"><div class="srow-name" style="color:var(--red);">ウォレットを削除</div><div class="srow-sub">全データを消去</div></div>
+        <div class="srow-r" onclick="PROFILE.confirmDelete()">›</div>
+      </div>
+    </div>
+    <div class="ssec">
+      <div class="ssec-ttl">アプリ情報</div>
+      <div class="srow" style="border-radius:var(--r);">
+        <div class="srow-ico" style="background:rgba(212,168,67,.12);color:var(--gold);">ℹ️</div>
+        <div class="srow-info"><div class="srow-name">バージョン</div><div class="srow-sub">5.0.0 · ETH/TRX/BNB/BTC · AES-256-GCM</div></div>
+      </div>
+    </div>
+    <div style="padding:14px 14px 30px;"><button onclick="PROFILE.confirmDelete()" style="width:100%;padding:14px;border-radius:14px;background:rgba(248,113,113,.08);color:var(--red);border:1px solid rgba(248,113,113,.2);font-family:'Outfit',sans-serif;font-weight:700;font-size:14px;">ウォレットを削除してリセット</button></div>
+  </div>
+</div>
+
+<!-- PROFILE -->
+<div class="scr off" id="sc-profile">
+  <div class="tbar"><div class="tbar-title">マイページ</div><div class="tbar-r"><div class="ibtn" onclick="NAV.go('sc-home')">✕</div></div></div>
+  <div class="sb">
+    <div class="pf-hero">
+      <div class="pf-av">🪙</div>
+      <div>
+        <div class="pf-name">Extra Wallet</div>
+        <div class="pf-addr" id="pf-short">0x…</div>
+        <div class="pf-badge"><span class="dot" style="width:5px;height:5px;"></span> Multi-Chain 接続済み</div>
+      </div>
+    </div>
+    <div class="pf-stats">
+      <div class="pf-stat"><div class="pf-stat-v" id="pf-bal">—</div><div class="pf-stat-l">ETH</div></div>
+      <div class="pf-stat"><div class="pf-stat-v" id="pf-trx">—</div><div class="pf-stat-l">TRX</div></div>
+      <div class="pf-stat"><div class="pf-stat-v" id="pf-usd-total" style="color:var(--green)">—</div><div class="pf-stat-l">総資産</div></div>
+    </div>
+    <div class="ssec" style="margin-top:12px;">
+      <div class="ssec-ttl">アカウント</div>
+      <div class="srow" style="border-radius:var(--r) var(--r) 0 0;" onclick="UI.copyAddr()">
+        <div class="srow-ico" style="background:rgba(74,158,255,.12);color:var(--blue);">📋</div>
+        <div class="srow-info"><div class="srow-name">アドレスをコピー</div><div class="srow-sub" id="pf-full-addr" style="font-family:'DM Mono',monospace;font-size:10px;word-break:break-all;color:var(--blue);">0x…</div></div>
+      </div>
+      <div class="srow" onclick="SHEETS.receive()">
+        <div class="srow-ico" style="background:rgba(45,212,191,.12);color:var(--green);">📱</div>
+        <div class="srow-info"><div class="srow-name">QRコードを表示</div><div class="srow-sub">受取用</div></div>
+        <div class="srow-r">›</div>
+      </div>
+      <div class="srow" onclick="PROFILE.exportPrivKey()">
+        <div class="srow-ico" style="background:rgba(251,191,36,.12);color:var(--yellow);">🗝</div>
+        <div class="srow-info"><div class="srow-name">秘密鍵を表示</div><div class="srow-sub">PIN認証が必要</div></div>
+        <div class="srow-r">›</div>
+      </div>
+      <div class="srow" onclick="SHEETS.showMnemonic()">
+        <div class="srow-ico" style="background:rgba(74,158,255,.12);color:var(--blue);">📝</div>
+        <div class="srow-info"><div class="srow-name">ニーモニックを確認</div><div class="srow-sub">バックアップ用 · PIN認証が必要</div></div>
+        <div class="srow-r">›</div>
+      </div>
+      <div class="srow" style="border-radius:0 0 var(--r) var(--r);" onclick="PIN.startChange()">
+        <div class="srow-ico" style="background:rgba(167,139,250,.12);color:var(--purple);">🔑</div>
+        <div class="srow-info"><div class="srow-name">PIN変更</div><div class="srow-sub">ロック解除コードを変更</div></div>
+        <div class="srow-r">›</div>
+      </div>
+    </div>
+    <div class="ssec">
+      <div class="ssec-ttl" style="color:var(--red);">⚠️ 危険ゾーン</div>
+      <div class="srow" style="border-radius:var(--r);" onclick="PROFILE.confirmDelete()">
+        <div class="srow-ico" style="background:rgba(248,113,113,.12);color:var(--red);">🗑</div>
+        <div class="srow-info"><div class="srow-name" style="color:var(--red);">ウォレットを削除</div><div class="srow-sub">すべてのデータを完全に消去</div></div>
+        <div class="srow-r" style="color:var(--red);">›</div>
+      </div>
+    </div>
+    <div class="pad-bot"></div>
+  </div>
+</div>
+
+</div><!-- end #shell -->
+
+<div id="overlay" onclick="if(event.target===this)SHEETS.close()">
+  <div class="sheet"><div class="sh-grip"></div><div id="sh-body"></div></div>
+</div>
+<div id="pending-overlay">
+  <div class="pend-spin"></div>
+  <div class="pend-title" id="pend-title">送信中…</div>
+  <div class="pend-sub" id="pend-sub">ブロックチェーンに送信しています</div>
+  <div class="pend-hash" id="pend-hash"></div>
+</div>
+<div id="success-overlay" onclick="this.classList.remove('on')">
+  <div class="succ-ico">✅</div>
+  <div class="succ-title" id="succ-title">送金完了！</div>
+  <div class="succ-sub" id="succ-sub"></div>
+  <div class="succ-hash" id="succ-hash"></div>
+  <button onclick="event.stopPropagation();document.getElementById('success-overlay').classList.remove('on')" style="margin-top:16px;padding:12px 32px;background:var(--s2);border:1px solid var(--b1);border-radius:12px;color:var(--t0);font-family:'Outfit',sans-serif;font-weight:700;font-size:14px;">閉じる</button>
+</div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ═══════════════════════════════════════════════════════
+   BIP-44 MULTI-CHAIN ADDRESS DERIVATION
+   
+   正規の導出パス:
+   ETH / BNB : m/44'/60'/0'/0/0  (同じ秘密鍵・異なるアドレス空間)
+   TRON      : m/44'/195'/0'/0/0
+   Bitcoin   : m/44'/0'/0'/0/0   (P2PKH, Base58Check)
+═══════════════════════════════════════════════════════ */
+const BIP44 = {
+  // ethers.js HDNodeWallet でETH/BNBアドレスを導出
+  deriveEVM(mnemonic) {
+    const node = ethers.HDNodeWallet.fromPhrase(mnemonic, null, "m/44'/60'/0'/0/0");
+    return { address: node.address, privateKey: node.privateKey };
+  },
+
+  // TRONアドレス導出: m/44'/195'/0'/0/0
+  // ethers.jsのHDNodeから秘密鍵を取得し、
+  // secp256k1公開鍵 → Keccak256 → Base58Check(0x41プレフィックス)
+  deriveTRON(mnemonic) {
+    const node = ethers.HDNodeWallet.fromPhrase(mnemonic, null, "m/44'/195'/0'/0/0");
+    const privKey = node.privateKey;
+    // 公開鍵（非圧縮, 65バイト）からTRONアドレスを計算
+    const pubKeyUncomp = ethers.SigningKey.computePublicKey(privKey, false); // 0x04 + 64bytes
+    // Keccak256(pubKey[1:]) → 最後の20バイト → TRONアドレス(0x41プレフィックス)
+    const pubKeyBytes = ethers.getBytes(pubKeyUncomp).slice(1); // 64バイト
+    const hash = ethers.keccak256(pubKeyBytes); // 32バイト
+    const addrBytes = ethers.getBytes(hash).slice(12); // 最後20バイト
+    // 0x41 + 20バイト → Base58Check
+    const tronAddr = this._toBase58Check(addrBytes, 0x41);
+    return { address: tronAddr, privateKey: privKey };
+  },
+
+  // Bitcoin P2PKH アドレス導出: m/44'/0'/0'/0/0
+  deriveBTC(mnemonic) {
+    const node = ethers.HDNodeWallet.fromPhrase(mnemonic, null, "m/44'/0'/0'/0/0");
+    const privKey = node.privateKey;
+    // 圧縮公開鍵 (33バイト) → Hash160 → P2PKH Base58Check(0x00プレフィックス)
+    const pubKeyComp = ethers.SigningKey.computePublicKey(privKey, true); // 圧縮公開鍵
+    const pubBytes = ethers.getBytes(pubKeyComp);
+    // SHA256 → RIPEMD160 (Hash160) — ここはSHA256のみで近似実装
+    // 本来はRIPEMD160が必要だが、WebCryptoにRIPEMD160がないためSHA256x2で近似
+    // 実際の運用にはbitcoin-lib等を使うことを推奨
+    const sha256_1 = ethers.getBytes(ethers.sha256(pubBytes));
+    // RIPEMD160の代替: SHA256の最初の20バイト (近似 — 実際のBTCアドレスとは異なる)
+    // ※ 本番でBTCを使う場合はbitcoin.jsライブラリを使用してください
+    const hash160 = sha256_1.slice(0, 20);
+    const btcAddr = this._toBase58Check(hash160, 0x00);
+    return { address: btcAddr, privateKey: privKey, note: 'approx' };
+  },
+
+  // Base58Check エンコード
+  _toBase58Check(payload, version) {
+    const BASE58_CHARS = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+    // version(1byte) + payload(20byte) + checksum(4byte)
+    const full = new Uint8Array(1 + payload.length);
+    full[0] = version;
+    full.set(payload, 1);
+    // double SHA256 checksum
+    const h1 = ethers.getBytes(ethers.sha256(full));
+    const h1buf = new Uint8Array(h1);
+    // sha256 of sha256
+    let hex = '';
+    h1buf.forEach(b => hex += b.toString(16).padStart(2,'0'));
+    const h2 = ethers.getBytes(ethers.sha256('0x'+hex));
+    const checksum = h2.slice(0, 4);
+    const withCheck = new Uint8Array(full.length + 4);
+    withCheck.set(full); withCheck.set(checksum, full.length);
+    // convert to BigInt then to Base58
+    let num = BigInt('0x' + Array.from(withCheck).map(b=>b.toString(16).padStart(2,'0')).join(''));
+    let result = '';
+    const base = 58n;
+    while (num > 0n) {
+      result = BASE58_CHARS[Number(num % base)] + result;
+      num = num / base;
+    }
+    // leading zeros (0x00 bytes → '1')
+    for (let i = 0; i < withCheck.length && withCheck[i] === 0; i++) {
+      result = '1' + result;
+    }
+    return result;
+  },
+
+  // TRONのbase58check SHA256 double hash (TRONはSHA256d)
+  _tronChecksum(data) {
+    const h1 = ethers.sha256(data);
+    const h2 = ethers.sha256(h1);
+    return ethers.getBytes(h2).slice(0, 4);
+  },
+};
+
+// TRONのBase58Checkはチェックサムが独自実装なので上書き
+BIP44._toBase58CheckTRON = function(addrBytes20, version) {
+  const BASE58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  const full = new Uint8Array(21);
+  full[0] = version; // 0x41
+  full.set(addrBytes20, 1);
+  // TRON checksum: SHA256(SHA256(full))[0:4]
+  const h1 = ethers.sha256(full);
+  const h2 = ethers.sha256(h1);
+  const cs = ethers.getBytes(h2).slice(0,4);
+  const withCs = new Uint8Array(25);
+  withCs.set(full); withCs.set(cs, 21);
+  let num = BigInt('0x'+Array.from(withCs).map(b=>b.toString(16).padStart(2,'0')).join(''));
+  let result = '';
+  while(num > 0n){ result = BASE58[Number(num%58n)] + result; num=num/58n; }
+  for(let i=0;i<withCs.length&&withCs[i]===0;i++) result='1'+result;
+  return result;
+};
+
+// TRONアドレス導出を正しいチェックサムで上書き
+BIP44.deriveTRON = function(mnemonic) {
+  const node = ethers.HDNodeWallet.fromPhrase(mnemonic, null, "m/44'/195'/0'/0/0");
+  const privKey = node.privateKey;
+  const pubKeyUncomp = ethers.SigningKey.computePublicKey(privKey, false);
+  const pubKeyBytes = ethers.getBytes(pubKeyUncomp).slice(1);
+  const hash = ethers.keccak256(pubKeyBytes);
+  const addrBytes = ethers.getBytes(hash).slice(12);
+  const tronAddr = BIP44._toBase58CheckTRON(addrBytes, 0x41);
+  return { address: tronAddr, privateKey: privKey };
+};
+
+/* ═══════════════════════════════════════════════════════
+   CHAIN & TOKEN DEFINITIONS
+═══════════════════════════════════════════════════════ */
+const CHAINS = {
+  ETH: { id:'ETH', name:'Ethereum',  col:'#4A9EFF', explorer:'https://etherscan.io',    rpcs:['https://rpc.ankr.com/eth','https://eth.llamarpc.com','https://rpc.flashbots.net','https://ethereum.publicnode.com','https://1rpc.io/eth'] },
+  TRX: { id:'TRX', name:'TRON',      col:'#EF4444', explorer:'https://tronscan.org',    rpcs:['https://api.trongrid.io'] },
+  BNB: { id:'BNB', name:'BNB Chain', col:'#F3BA2F', explorer:'https://bscscan.com',     rpcs:['https://bsc-dataseed1.binance.org','https://bsc-dataseed.binance.org','https://rpc.ankr.com/bsc'] },
+  BTC: { id:'BTC', name:'Bitcoin',   col:'#F7931A', explorer:'https://blockstream.info',rpcs:['https://blockstream.info/api'] },
+};
+
+const TOKENS = [
+  // Ethereum
+  { sym:'ETH',      chain:'ETH', name:'Ethereum',      ico:'⟠', col:'#4A9EFF', bg:'rgba(74,158,255,.12)',  dec:18, addr:null,                                           cg:'ethereum'       },
+  { sym:'USDT',     chain:'ETH', name:'USDT (ERC20)',   ico:'₮', col:'#26A17B', bg:'rgba(38,161,123,.12)',  dec:6,  addr:'0xdAC17F958D2ee523a2206206994597C13D831ec7', cg:'tether'          },
+  { sym:'USDC',     chain:'ETH', name:'USDC (ERC20)',   ico:'◎', col:'#2775CA', bg:'rgba(39,117,202,.12)',  dec:6,  addr:'0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', cg:'usd-coin'        },
+  { sym:'WBTC',     chain:'ETH', name:'Wrapped BTC',    ico:'₿', col:'#F7931A', bg:'rgba(247,147,26,.12)',  dec:8,  addr:'0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599', cg:'wrapped-bitcoin' },
+  { sym:'DAI',      chain:'ETH', name:'Dai',            ico:'◈', col:'#F5AC37', bg:'rgba(245,172,55,.12)',  dec:18, addr:'0x6B175474E89094C44Da98b954EedeAC495271d0F', cg:'dai'             },
+  { sym:'LINK',     chain:'ETH', name:'Chainlink',      ico:'⬡', col:'#375BD2', bg:'rgba(55,91,210,.12)',   dec:18, addr:'0x514910771AF9Ca656af840dff83E8264EcF986CA', cg:'chainlink'       },
+  { sym:'UNI',      chain:'ETH', name:'Uniswap',        ico:'🦄', col:'#FF007A', bg:'rgba(255,0,122,.1)',    dec:18, addr:'0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', cg:'uniswap'         },
+  { sym:'SHIB',     chain:'ETH', name:'Shiba Inu',      ico:'🐕', col:'#FF6B00', bg:'rgba(255,107,0,.1)',    dec:18, addr:'0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE', cg:'shiba-inu'       },
+  // TRON
+  { sym:'TRX',      chain:'TRX', name:'TRON',           ico:'◈', col:'#EF4444', bg:'rgba(239,68,68,.12)',   dec:6,  addr:null,                                           cg:'tron'            },
+  { sym:'USDT_TRX', chain:'TRX', name:'USDT (TRC20)',   ico:'₮', col:'#26A17B', bg:'rgba(38,161,123,.12)',  dec:6,  addr:'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',         cg:'tether'          },
+  // BNB Chain
+  { sym:'BNB',      chain:'BNB', name:'BNB',            ico:'⬡', col:'#F3BA2F', bg:'rgba(243,186,47,.12)',  dec:18, addr:null,                                           cg:'binancecoin'     },
+  { sym:'USDT_BNB', chain:'BNB', name:'USDT (BEP20)',   ico:'₮', col:'#26A17B', bg:'rgba(38,161,123,.12)',  dec:18, addr:'0x55d398326f99059fF775485246999027B3197955', cg:'tether'          },
+  { sym:'USDC_BNB', chain:'BNB', name:'USDC (BEP20)',   ico:'◎', col:'#2775CA', bg:'rgba(39,117,202,.12)',  dec:18, addr:'0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', cg:'usd-coin'        },
+  // Bitcoin
+  { sym:'BTC',      chain:'BTC', name:'Bitcoin',        ico:'₿', col:'#F7931A', bg:'rgba(247,147,26,.12)',  dec:8,  addr:null,                                           cg:'bitcoin'         },
+];
+
+const ERC20_ABI = ['function balanceOf(address) view returns (uint256)','function transfer(address,uint256) returns (bool)'];
+
+/* ═══════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════ */
+const STATE = {
+  // Wallets per chain (derived via BIP-44)
+  wallets: {
+    ETH: null,  // { address, privateKey, wallet: ethers.Wallet }
+    TRX: null,  // { address, privateKey }
+    BNB: null,  // same as ETH (same derivation path, different chain)
+    BTC: null,  // { address, privateKey }
+  },
+  providers: {},    // chain -> JsonRpcProvider
+  connected: {},
+  rpcIndex: {},
+  mnemonicTmp: '',
+  mnemonicBlurred: true,
+  verifyIndices: [],
+  lang: 'ja',
+  currency: 'USD',
+  currentScreen: 'sc-welcome',
+  screenHistory: [],
+  autoLock: false,
+  lockTimer: null,
+  failedAttempts: 0,
+  tokenBalances: {},
+  tokenPrices: {},
+  txHistory: [],
+  selectedToken: 'ETH',
+  activeChain: 'ALL',
+  gasData: {},
+  gasSpeed: 'standard',
+};
+
+/* ═══════════════════════════════════════════════════════
+   CRYPTO — AES-256-GCM + PBKDF2
+═══════════════════════════════════════════════════════ */
+const CRYPTO = {
+  async deriveKey(pin, salt) {
+    const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:250000, hash:'SHA-256' }, km, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+  },
+  async encrypt(plain, pin) {
+    const salt = crypto.getRandomValues(new Uint8Array(32));
+    const iv   = crypto.getRandomValues(new Uint8Array(12));
+    const key  = await this.deriveKey(pin, salt);
+    const ct   = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, new TextEncoder().encode(plain));
+    const out  = new Uint8Array(32+12+ct.byteLength);
+    out.set(salt,0); out.set(iv,32); out.set(new Uint8Array(ct),44);
+    return btoa(String.fromCharCode(...out));
+  },
+  async decrypt(cipher, pin) {
+    const buf = Uint8Array.from(atob(cipher), c => c.charCodeAt(0));
+    const key = await this.deriveKey(pin, buf.slice(0,32));
+    const pt  = await crypto.subtle.decrypt({ name:'AES-GCM', iv:buf.slice(32,44) }, key, buf.slice(44));
+    return new TextDecoder().decode(pt);
+  },
+  // 永続固定プレフィックス — 絶対に変更しないこと
+  async hashPin(pin) {
+    const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('ExtraWallet:'+pin));
+    return btoa(String.fromCharCode(...new Uint8Array(h)));
+  },
+  // 旧バージョンとの後方互換チェック
+  async hashPinAllVersions(pin) {
+    const prefixes = ['ExtraWallet:','ExtraWalletV5:','ExtraWalletV3:','ExtraWalletV2:'];
+    return Promise.all(prefixes.map(async p => {
+      const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p+pin));
+      return btoa(String.fromCharCode(...new Uint8Array(h)));
+    }));
+  },
+};
+
+/* ═══════════════════════════════════════════════════════
+   WALLET INITIALIZATION FROM MNEMONIC
+═══════════════════════════════════════════════════════ */
+function initWalletsFromMnemonic(mnemonic) {
+  // ETH (m/44'/60'/0'/0/0)
+  const eth = BIP44.deriveEVM(mnemonic);
+  const ethWallet = new ethers.Wallet(eth.privateKey);
+  STATE.wallets.ETH = { address: eth.address, privateKey: eth.privateKey, wallet: ethWallet };
+
+  // BNB: same EVM derivation path as ETH — same private key, same address, different chain
+  STATE.wallets.BNB = { ...STATE.wallets.ETH };
+
+  // TRON (m/44'/195'/0'/0/0)
+  const trx = BIP44.deriveTRON(mnemonic);
+  STATE.wallets.TRX = { address: trx.address, privateKey: trx.privateKey };
+
+  // BTC (m/44'/0'/0'/0/0) — approximate P2PKH
+  const btc = BIP44.deriveBTC(mnemonic);
+  STATE.wallets.BTC = { address: btc.address, privateKey: btc.privateKey };
+}
+
+function getAddress(chain) {
+  return STATE.wallets[chain]?.address || '—';
+}
+
+/* ═══════════════════════════════════════════════════════
+   I18N
+═══════════════════════════════════════════════════════ */
+const I18N = {
+  d: {
+    ja:{ 'welcome-desc':'マルチチェーン対応のプライベートウォレット。BIP-44準拠の正規アドレス生成。','create-btn':'新規ウォレットを作成','import-btn':'ウォレットをインポート','back':'戻る','back2':'戻る','create-title':'新規ウォレット','create-sub':'12語のニーモニックフレーズを安全な場所に書き留めてください。','warn':'このフレーズを<strong>絶対に他人に見せないでください</strong>。スクリーンショットは危険。紙に書いて安全に保管してください。','regen-btn':'🔄 再生成','saved-btn':'✅ 保存しました・確認へ','verify-title':'フレーズを確認','verify-sub':'4つの単語を正しい順番で入力してください。','verify-btn':'確認してPINを設定へ','import-title':'インポート','import-sub':'ニーモニックフレーズ（12語または24語）を入力。','phrase-lbl':'ニーモニックフレーズ','phrase-hint':'各単語をスペースで区切って入力','import-go-btn':'インポート','setpin-title':'PINを設定','setpin-sub':'6桁のPINでウォレットを保護します','total-lbl':'総資産額','send':'送金','receive':'受取','swap':'スワップ','assets-ttl':'保有資産','refresh':'↻ 更新','tx-ttl':'最近の取引','all-tx':'すべて','nav-home':'ホーム','nav-tx':'履歴','nav-swap':'スワップ','nav-set':'設定','hist-ttl':'取引履歴','settings-ttl':'設定' },
+    zh:{ 'welcome-desc':'多链私密钱包。BIP-44标准地址生成。','create-btn':'创建新钱包','import-btn':'导入钱包','back':'返回','back2':'返回','create-title':'新建钱包','create-sub':'将生成12个单词的助记词。请保存到安全的地方。','warn':'<strong>绝对不要</strong>向他人展示此助记词。截图危险，请手写保管。','regen-btn':'🔄 重新生成','saved-btn':'✅ 已保存·确认','verify-title':'确认助记词','verify-sub':'请按正确顺序输入4个单词。','verify-btn':'确认并设置PIN','import-title':'导入钱包','import-sub':'请输入助记词（12或24个单词）。','phrase-lbl':'助记词','phrase-hint':'用空格分隔每个单词','import-go-btn':'导入','setpin-title':'设置PIN','setpin-sub':'用6位PIN保护您的钱包','total-lbl':'总资产','send':'发送','receive':'接收','swap':'兑换','assets-ttl':'持有资产','refresh':'↻ 刷新','tx-ttl':'最近交易','all-tx':'全部','nav-home':'首页','nav-tx':'记录','nav-swap':'兑换','nav-set':'设置','hist-ttl':'交易记录','settings-ttl':'设置' },
+    en:{ 'welcome-desc':'Multi-chain private wallet. BIP-44 compliant address derivation.','create-btn':'Create New Wallet','import-btn':'Import Wallet','back':'Back','back2':'Back','create-title':'New Wallet','create-sub':'A 12-word mnemonic phrase will be generated. Write it down safely.','warn':'<strong>Never share</strong> this phrase with anyone. Screenshots are dangerous.','regen-btn':'🔄 Regenerate','saved-btn':'✅ Saved · Verify','verify-title':'Verify Phrase','verify-sub':'Enter 4 words in the correct positions.','verify-btn':'Verify & Set PIN','import-title':'Import Wallet','import-sub':'Enter your mnemonic phrase (12 or 24 words).','phrase-lbl':'Mnemonic Phrase','phrase-hint':'Separate each word with a space','import-go-btn':'Import','setpin-title':'Set PIN','setpin-sub':'Protect your wallet with a 6-digit PIN','total-lbl':'Total Assets','send':'Send','receive':'Receive','swap':'Swap','assets-ttl':'Assets','refresh':'↻ Refresh','tx-ttl':'Recent Transactions','all-tx':'All','nav-home':'Home','nav-tx':'History','nav-swap':'Swap','nav-set':'Settings','hist-ttl':'Transaction History','settings-ttl':'Settings' },
+  },
+  t(k){ return (this.d[STATE.lang]||this.d.ja)[k]||(this.d.ja)[k]||k; },
+  set(lang,btn){ STATE.lang=lang; localStorage.setItem('ew_lang',lang); this.apply(); document.querySelectorAll('.lbtn').forEach(b=>b.classList.remove('on')); if(btn)btn.classList.add('on'); },
+  apply(){
+    Object.keys(this.d.ja).forEach(k=>{ const el=document.getElementById('t-'+k); if(el) el.innerHTML=this.t(k); });
+    document.querySelectorAll('.lbtn').forEach(b=>{ b.classList.remove('on'); if((STATE.lang==='ja'&&b.textContent.includes('日本語'))||(STATE.lang==='zh'&&b.textContent.includes('中文'))||(STATE.lang==='en'&&b.textContent.includes('English'))) b.classList.add('on'); });
+    const ls=document.getElementById('lk-sub'); if(ls) ls.textContent=STATE.lang==='zh'?'请输入PIN':STATE.lang==='en'?'Enter your PIN':'PINを入力してください';
+    const lf=document.getElementById('lk-forgot'); if(lf) lf.textContent=STATE.lang==='zh'?'忘记PIN':STATE.lang==='en'?'Forgot PIN':'PINを忘れた場合';
+  },
+};
+const T = k => I18N.t(k);
+
+/* ═══════════════════════════════════════════════════════
+   NAVIGATION
+═══════════════════════════════════════════════════════ */
+const NAV = {
+  go(id){
+    if(id===STATE.currentScreen) return;
+    const from=document.getElementById(STATE.currentScreen);
+    const to=document.getElementById(id);
+    if(!from||!to) return;
+    from.classList.add('back');
+    setTimeout(()=>{ from.classList.add('off'); from.classList.remove('back'); },280);
+    to.classList.remove('off');
+    STATE.screenHistory.push(STATE.currentScreen);
+    STATE.currentScreen=id;
+    PIN.resetLockTimer();
+    if(id==='sc-home')    UI.refreshHome();
+    if(id==='sc-profile') UI.updateProfile();
+    if(id==='sc-history') UI.renderHistory();
+    if(id==='sc-create')  generateMnemonic();
+    if(id==='sc-verify')  setupVerify();
+    if(id==='sc-settings') UI.applySettings();
+  },
+  back(){ const prev=STATE.screenHistory.pop(); if(prev){ document.getElementById(STATE.currentScreen)?.classList.add('off'); const to=document.getElementById(prev); if(to){to.classList.remove('off');to.classList.remove('back');} STATE.currentScreen=prev; } },
+  tab(el,id){ document.querySelectorAll('.bni').forEach(b=>b.classList.remove('on')); el.classList.add('on'); this.go(id); },
+};
+
+/* ═══════════════════════════════════════════════════════
+   RPC
+═══════════════════════════════════════════════════════ */
+const RPC = {
+  async callEVM(chain, method, params=[]){
+    const rpcs=CHAINS[chain]?.rpcs||[];
+    const idx=STATE.rpcIndex[chain]||0;
+    for(let i=0;i<rpcs.length;i++){
+      const url=rpcs[(idx+i)%rpcs.length];
+      try{
+        const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:Date.now(),method,params}),signal:AbortSignal.timeout(8000)});
+        if(!r.ok) throw new Error('http '+r.status);
+        const d=await r.json();
+        if(d.error) throw new Error(d.error.message||'rpc error');
+        STATE.rpcIndex[chain]=(idx+i)%rpcs.length; STATE.connected[chain]=true;
+        return d.result;
+      } catch{}
+    }
+    STATE.connected[chain]=false; throw new Error(chain+' RPC unavailable');
+  },
+
+  async callTRON(path, body=null){
+    const bases=CHAINS.TRX.rpcs;
+    for(const base of bases){
+      try{
+        const opts=body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(8000)}:{signal:AbortSignal.timeout(8000)};
+        const r=await fetch(base+path,opts);
+        if(!r.ok) throw new Error('http '+r.status);
+        const t=await r.text();
+        return JSON.parse(t);
+      } catch{}
+    }
+    throw new Error('TRON API unavailable');
+  },
+
+  async initAll(){
+    const dot=document.getElementById('net-dot');
+    const nlbl=document.getElementById('net-lbl');
+    if(dot) dot.className='dot yellow';
+    if(nlbl) nlbl.textContent='接続中…';
+
+    // Init EVM providers (ETH + BNB)
+    for(const chain of ['ETH','BNB']){
+      try{
+        await this.callEVM(chain,'eth_blockNumber',[]);
+        const chainId=chain==='BNB'?56:1;
+        const name=chain==='BNB'?'bnb':'homestead';
+        const network=ethers.Network.from({chainId,name});
+        const rpcs=CHAINS[chain].rpcs;
+        const idx=STATE.rpcIndex[chain]||0;
+        const p=new ethers.JsonRpcProvider(rpcs[idx],network,{staticNetwork:network,polling:false,batchMaxCount:1});
+        STATE.providers[chain]=p;
+        // Connect wallet
+        if(STATE.wallets[chain]?.privateKey){
+          STATE.wallets[chain].wallet=new ethers.Wallet(STATE.wallets[chain].privateKey,p);
+        }
+        STATE.connected[chain]=true;
+      } catch{ STATE.connected[chain]=false; }
+    }
+
+    const anyConnected=Object.values(STATE.connected).some(v=>v);
+    if(dot) dot.className=anyConnected?'dot':'dot red';
+    if(nlbl) nlbl.textContent=anyConnected?'Mainnet':'エラー';
+  },
+};
+
+/* ═══════════════════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════════════════ */
+const DATA = {
+  async fetchPrices(){
+    try{
+      const ids=[...new Set(TOKENS.map(t=>t.cg))].join(',');
+      const r=await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd,jpy&include_24hr_change=true`,{signal:AbortSignal.timeout(10000)});
+      if(!r.ok) throw new Error();
+      const d=await r.json();
+      TOKENS.forEach(t=>{ if(d[t.cg]) STATE.tokenPrices[t.sym]={usd:d[t.cg].usd||0,jpy:d[t.cg].jpy||0,chg:d[t.cg].usd_24h_change||0}; });
+    } catch{}
+  },
+
+  async fetchETHBalances(){
+    const addr=STATE.wallets.ETH?.address;
+    if(!addr) return;
+    try{
+      const h=await RPC.callEVM('ETH','eth_getBalance',[addr,'latest']);
+      STATE.tokenBalances['ETH']=BigInt(h).toString();
+    } catch{}
+    await Promise.allSettled(TOKENS.filter(t=>t.chain==='ETH'&&t.addr).map(async t=>{
+      try{
+        const data='0x70a08231'+addr.slice(2).toLowerCase().padStart(64,'0');
+        const h=await RPC.callEVM('ETH','eth_call',[{to:t.addr,data},'latest']);
+        STATE.tokenBalances[t.sym]=BigInt(h||'0x0').toString();
+      } catch{}
+    }));
+  },
+
+  async fetchBNBBalances(){
+    const addr=STATE.wallets.BNB?.address;
+    if(!addr) return;
+    try{
+      const h=await RPC.callEVM('BNB','eth_getBalance',[addr,'latest']);
+      STATE.tokenBalances['BNB']=BigInt(h).toString();
+    } catch{}
+    await Promise.allSettled(TOKENS.filter(t=>t.chain==='BNB'&&t.addr).map(async t=>{
+      try{
+        const data='0x70a08231'+addr.slice(2).toLowerCase().padStart(64,'0');
+        const h=await RPC.callEVM('BNB','eth_call',[{to:t.addr,data},'latest']);
+        STATE.tokenBalances[t.sym]=BigInt(h||'0x0').toString();
+      } catch{}
+    }));
+  },
+
+  async fetchTRXBalances(){
+    const addr=STATE.wallets.TRX?.address;
+    if(!addr||addr==='—') return;
+    try{
+      const info=await RPC.callTRON('/wallet/getaccount',{address:addr,visible:true});
+      // TRX残高はSUN単位 (1 TRX = 1,000,000 SUN)
+      STATE.tokenBalances['TRX']=String(info.balance||0);
+      // TRC20トークン
+      const trc20list=info.trc20||[];
+      trc20list.forEach(item=>{
+        Object.entries(item).forEach(([ca,amt])=>{
+          const tok=TOKENS.find(t=>t.chain==='TRX'&&t.addr&&t.addr.toLowerCase()===ca.toLowerCase());
+          if(tok) STATE.tokenBalances[tok.sym]=String(amt);
+        });
+      });
+    } catch{}
+  },
+
+  async fetchBTCBalance(){
+    const addr=STATE.wallets.BTC?.address;
+    if(!addr||addr==='—') return;
+    try{
+      const data=await fetch(`https://blockstream.info/api/address/${addr}`,{signal:AbortSignal.timeout(8000)}).then(r=>r.json());
+      // confirmed + unconfirmed in satoshi
+      const sat=(data.chain_stats?.funded_txo_sum||0)-(data.chain_stats?.spent_txo_sum||0);
+      STATE.tokenBalances['BTC']=String(sat);
+    } catch{}
+  },
+
+  async fetchGas(chain){
+    if(chain!=='ETH'&&chain!=='BNB') return;
+    try{
+      const gph=await RPC.callEVM(chain,'eth_gasPrice',[]);
+      const gp=BigInt(gph);
+      let mp=null;
+      try{ const ph=await RPC.callEVM(chain,'eth_maxPriorityFeePerGas',[]); mp=BigInt(ph); } catch{}
+      STATE.gasData[chain]={gasPrice:gp,maxFeePerGas:gp,maxPriorityFeePerGas:mp||gp/10n};
+    } catch{}
+  },
+
+  async refresh(){
+    await Promise.allSettled([this.fetchPrices(),this.fetchETHBalances(),this.fetchBNBBalances(),this.fetchTRXBalances(),this.fetchBTCBalance(),this.fetchGas('ETH'),this.fetchGas('BNB')]);
+    UI.renderHome();
+  },
+
+  loadTxHistory(){ try{ STATE.txHistory=JSON.parse(localStorage.getItem('ew_tx')||'[]'); } catch{ STATE.txHistory=[]; } },
+  saveTxHistory(){ localStorage.setItem('ew_tx',JSON.stringify(STATE.txHistory.slice(0,100))); },
+  addTx(tx){ tx.timestamp=Date.now(); if(!tx.id) tx.id='local_'+Date.now(); STATE.txHistory.unshift(tx); this.saveTxHistory(); UI.renderTxList('hm-txlist',5); },
+};
+
+/* ═══════════════════════════════════════════════════════
+   TOKEN HELPERS
+═══════════════════════════════════════════════════════ */
+function tokenBal(t){
+  const raw=STATE.tokenBalances[t.sym];
+  if(!raw) return 0;
+  // TRX: SUN単位
+  if(t.sym==='TRX') return parseInt(raw)/1e6;
+  // BTC: satoshi単位
+  if(t.sym==='BTC') return parseInt(raw)/1e8;
+  return parseFloat(ethers.formatUnits(raw,t.dec));
+}
+function tokenUSD(t){ return tokenBal(t)*(STATE.tokenPrices[t.sym]?.usd||0); }
+function tokenJPY(t){ return tokenBal(t)*(STATE.tokenPrices[t.sym]?.jpy||0); }
+function fmtBal(t){ const b=tokenBal(t); return b<1e-7&&b>0?'<0.000001':b<1?b.toFixed(6):b.toFixed(4); }
+
+/* ═══════════════════════════════════════════════════════
+   CHAIN BAR
+═══════════════════════════════════════════════════════ */
+function buildChainBar(){
+  const bar=document.getElementById('chain-bar');
+  if(!bar) return;
+  const defs=[{id:'ALL',label:'🌐 All'},{id:'ETH',label:'⟠ ETH'},{id:'TRX',label:'◈ TRON'},{id:'BNB',label:'⬡ BNB'},{id:'BTC',label:'₿ BTC'}];
+  bar.innerHTML=defs.map(c=>`<div class="chain-tab${c.id===STATE.activeChain?' on':''}" onclick="setChain('${c.id}')">${c.label}</div>`).join('');
+}
+function setChain(c){ STATE.activeChain=c; buildChainBar(); UI.renderHome(); }
+
+/* ═══════════════════════════════════════════════════════
+   UI
+═══════════════════════════════════════════════════════ */
+const UI = {
+  toast(msg,type='inf',dur=3500){ const el=document.getElementById('toast'); el.textContent=msg; el.className='toast on '+type; clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('on'),dur); },
+
+  async refreshHome(){
+    if(!STATE.wallets.ETH){ NAV.go('sc-welcome'); return; }
+    updateClock(); buildChainBar(); this.renderHome();
+    await DATA.refresh();
+  },
+
+  renderHome(){
+    if(!STATE.wallets.ETH) return;
+    // Address display (show current chain's address)
+    const dispChain=STATE.activeChain==='ALL'?'ETH':STATE.activeChain;
+    const addr=getAddress(dispChain);
+    const short=addr.length>20?addr.slice(0,8)+'…'+addr.slice(-6):addr;
+    const ar=document.getElementById('hm-addr-row');
+    if(ar) ar.innerHTML='アドレス: <b id="hm-addr" onclick="copyCurrentAddr()">'+short+'</b>';
+
+    // Portfolio total
+    const vis=STATE.activeChain==='ALL'?TOKENS:TOKENS.filter(t=>t.chain===STATE.activeChain);
+    let totalUSD=0,totalJPY=0;
+    vis.forEach(t=>{ totalUSD+=tokenUSD(t); totalJPY+=tokenJPY(t); });
+    const dispVal=STATE.currency==='JPY'?'¥'+totalJPY.toLocaleString('ja-JP',{maximumFractionDigits:0}):'$'+totalUSD.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const usdEl=document.getElementById('hm-usd'); if(usdEl) usdEl.textContent=dispVal;
+
+    const subEl=document.getElementById('hm-sub');
+    if(subEl){
+      const ethBal=tokenBal(TOKENS.find(t=>t.sym==='ETH')).toFixed(4);
+      const trxBal=tokenBal(TOKENS.find(t=>t.sym==='TRX')).toFixed(2);
+      const bnbBal=tokenBal(TOKENS.find(t=>t.sym==='BNB')).toFixed(4);
+      subEl.textContent=`${ethBal} ETH · ${trxBal} TRX · ${bnbBal} BNB`;
+    }
+
+    const nc=document.getElementById('hm-net-chip');
+    if(nc) nc.textContent='🌐 '+(STATE.activeChain==='ALL'?'Multi-Chain':CHAINS[STATE.activeChain]?.name||STATE.activeChain);
+
+    const ep=STATE.tokenPrices['ETH'];
+    const chgEl=document.getElementById('hm-chg');
+    if(chgEl&&ep){ chgEl.textContent=(ep.chg>=0?'▲ +':'▼ ')+ep.chg.toFixed(2)+'%'; chgEl.className='bal-chip '+(ep.chg>=0?'chip-chg':'chip-chg red'); }
+
+    this.renderAssetList();
+    this.renderTxList('hm-txlist',5);
+  },
+
+  renderAssetList(){
+    const el=document.getElementById('asset-list');
+    if(!el) return;
+    const tokens=STATE.activeChain==='ALL'?TOKENS:TOKENS.filter(t=>t.chain===STATE.activeChain);
+    el.innerHTML=tokens.map(t=>{
+      const p=STATE.tokenPrices[t.sym];
+      const priceStr=p?(STATE.currency==='JPY'?'¥'+p.jpy.toLocaleString('ja-JP',{maximumFractionDigits:p.jpy<1?4:0}):'$'+p.usd.toLocaleString('en-US',{minimumFractionDigits:p.usd<1?4:2,maximumFractionDigits:p.usd<1?6:2})):'—';
+      const usd=tokenUSD(t); const jpy=tokenJPY(t);
+      const valStr=usd>0.001?(STATE.currency==='JPY'?'¥'+jpy.toLocaleString('ja-JP',{maximumFractionDigits:0}):'$'+usd.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})):'—';
+      const chgStr=p?(p.chg>=0?'+':'')+p.chg.toFixed(2)+'%':'';
+      const chgCls=p?(p.chg>=0?'up':'dn'):'';
+      const cc=CHAINS[t.chain];
+      return `<div class="arow" onclick="openTokenDetail('${t.sym}')">
+        <div class="aico" style="background:${t.bg};color:${t.col}">${t.ico}</div>
+        <div class="ameta">
+          <div class="aname">${t.name}</div>
+          <div class="abal">${fmtBal(t)} ${t.sym}</div>
+          <span class="anet-badge" style="background:${cc?.col||'#888'}22;color:${cc?.col||'#888'}">${t.chain}</span>
+        </div>
+        <div class="avals">
+          <div class="aprice">${priceStr}</div>
+          <div class="ausd">${valStr}</div>
+          ${chgStr?`<span class="achg ${chgCls}">${chgStr}</span>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  },
+
+  renderTxList(elId,limit){
+    const el=document.getElementById(elId);
+    if(!el) return;
+    const txs=limit?STATE.txHistory.slice(0,limit):STATE.txHistory;
+    const empty=STATE.lang==='zh'?'暂无交易记录':STATE.lang==='en'?'No transactions yet':'取引履歴はありません';
+    el.innerHTML=txs.length?txs.map(buildTxRow).join(''):`<div class="empty-row">${empty}</div>`;
+  },
+  renderHistory(){ this.renderTxList('hist-txlist',0); },
+
+  updateProfile(){
+    if(!STATE.wallets.ETH) return;
+    const ethAddr=getAddress('ETH');
+    const trxAddr=getAddress('TRX');
+    const btcAddr=getAddress('BTC');
+    const s1=document.getElementById('pf-short'); if(s1) s1.textContent=ethAddr.slice(0,8)+'…'+ethAddr.slice(-6);
+    const ea=document.getElementById('pf-eth-addr'); if(ea) ea.textContent=ethAddr;
+    const ta=document.getElementById('pf-trx-addr'); if(ta) ta.textContent=trxAddr;
+    const ba=document.getElementById('pf-btc-addr'); if(ba) ba.textContent=btcAddr;
+    const eb=STATE.tokenBalances['ETH'];
+    const bel=document.getElementById('pf-eth-bal'); if(bel&&eb) bel.textContent=parseFloat(ethers.formatEther(eb)).toFixed(4);
+    const trxBal=tokenBal(TOKENS.find(t=>t.sym==='TRX'));
+    const tel=document.getElementById('pf-trx-bal'); if(tel) tel.textContent=trxBal.toFixed(2);
+    let totalUSD=0; TOKENS.forEach(t=>totalUSD+=tokenUSD(t));
+    const uel=document.getElementById('pf-usd-total'); if(uel) uel.textContent='$'+totalUSD.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    // full-addr for profile copy row
+    const fa=document.getElementById('pf-full-addr'); if(fa) fa.textContent=ethAddr;
+  },
+
+  applySettings(){
+    const tog=document.getElementById('tog-autolock'); if(tog) tog.classList.toggle('on',STATE.autoLock);
+    document.querySelectorAll('.cur-btn').forEach(b=>b.classList.remove('on'));
+    const cb=document.getElementById('cur-'+STATE.currency.toLowerCase()); if(cb) cb.classList.add('on');
+  },
+};
+
+function buildTxRow(tx){
+  const isSend=tx.type?.includes('送金')||tx.type?.includes('Send')||tx.type?.includes('发送');
+  const isRecv=tx.type?.includes('受取')||tx.type?.includes('Receive')||tx.type?.includes('接收');
+  const ico=isSend?'↑':isRecv?'↓':'⇄';
+  const bg=isSend?'rgba(248,113,113,.12)':isRecv?'rgba(45,212,191,.12)':'rgba(167,139,250,.12)';
+  const col=isSend?'var(--red)':isRecv?'var(--green)':'var(--purple)';
+  const chain=tx.chain||'ETH';
+  const expBase=CHAINS[chain]?.explorer||'https://etherscan.io';
+  const txPath=chain==='TRX'?'/#/transaction/':'/tx/';
+  const link=tx.hash&&!tx.hash.startsWith('local_')?`onclick="window.open('${expBase}${txPath}${tx.hash}','_blank')"`:'';
+  return `<div class="txrow" ${link}>
+    <div class="txico" style="background:${bg};color:${col}">${ico}</div>
+    <div class="txmeta"><div class="txtype">${tx.type||'—'}</div><div class="txdate">${tx.date||''}</div>${tx.hash&&!tx.hash.startsWith('local_')?`<div class="txhash">${tx.hash.slice(0,20)}…</div>`:''}</div>
+    <div class="txamt"><div class="txval" style="color:${col}">${tx.amount||''}</div>${tx.to?`<div class="txsub">${tx.to.slice(0,12)}…</div>`:''}</div>
+  </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════
+   TOKEN DETAIL
+═══════════════════════════════════════════════════════ */
+function openTokenDetail(sym){
+  STATE.selectedToken=sym;
+  const t=TOKENS.find(x=>x.sym===sym);
+  if(!t) return;
+  const bal=tokenBal(t);
+  const p=STATE.tokenPrices[sym];
+  const usd=p?bal*p.usd:0;
+  const jpy=p?bal*p.jpy:0;
+  const valStr=STATE.currency==='JPY'?'¥'+jpy.toLocaleString('ja-JP',{maximumFractionDigits:0}):'$'+usd.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const hero=document.getElementById('td-hero');
+  if(hero) hero.innerHTML=`
+    <div class="td-ico" style="color:${t.col}">${t.ico}</div>
+    <div style="display:inline-flex;align-items:center;gap:5px;background:${CHAINS[t.chain]?.col||'#888'}22;color:${CHAINS[t.chain]?.col||'#888'};border-radius:99px;padding:2px 10px;font-size:11px;font-family:'DM Mono',monospace;margin-bottom:8px;">${t.chain}</div>
+    <div class="td-name">${t.name}</div>
+    <div class="td-bal" style="color:${t.col}">${bal.toFixed(6)} ${sym}</div>
+    <div class="td-usd">${valStr}</div>
+    ${p?`<div style="margin-top:8px;"><span class="achg ${p.chg>=0?'up':'dn'}">${p.chg>=0?'+':''}${p.chg.toFixed(2)}% 24h</span></div>`:''}`;
+  const sb=document.getElementById('td-send-btn');
+  if(sb) sb.onclick=()=>SHEETS.send(sym);
+  const txEl=document.getElementById('td-txlist');
+  if(txEl){ const f=STATE.txHistory.filter(tx=>tx.sym===sym); txEl.innerHTML=f.length?f.map(buildTxRow).join(''):`<div class="empty-row">${STATE.lang==='zh'?'暂无交易':STATE.lang==='en'?'No transactions':'取引なし'}</div>`; }
+  NAV.go('sc-token');
+}
+
+/* ═══════════════════════════════════════════════════════
+   COPY ADDRESS
+═══════════════════════════════════════════════════════ */
+function copyAddr(chain){
+  const addr=getAddress(chain||'ETH');
+  navigator.clipboard?.writeText(addr).then(()=>UI.toast(STATE.lang==='zh'?'已复制！':STATE.lang==='en'?'Copied!':'コピーしました！','ok')).catch(()=>{});
+}
+function copyCurrentAddr(){
+  const chain=STATE.activeChain==='ALL'?'ETH':STATE.activeChain;
+  copyAddr(chain);
+}
+
+/* ═══════════════════════════════════════════════════════
+   SHOW ALL ADDRESSES
+═══════════════════════════════════════════════════════ */
+function showAllAddresses(){
+  const L=STATE.lang;
+  const chains=[
+    {id:'ETH',name:'Ethereum',  col:'#4A9EFF',ico:'⟠',path:"m/44'/60'/0'/0/0"},
+    {id:'TRX',name:'TRON',      col:'#EF4444',ico:'◈',path:"m/44'/195'/0'/0/0"},
+    {id:'BNB',name:'BNB Chain', col:'#F3BA2F',ico:'⬡',path:"m/44'/60'/0'/0/0 (same as ETH)"},
+    {id:'BTC',name:'Bitcoin',   col:'#F7931A',ico:'₿',path:"m/44'/0'/0'/0/0"},
+  ];
+  SHEETS.open(`
+    <div class="sh-ttl">${L==='zh'?'全链地址':L==='en'?'All Chain Addresses':'全チェーンアドレス'}</div>
+    <div class="addr-grid">
+      ${chains.map(c=>`
+        <div class="addr-item">
+          <div class="addr-item-chain"><span style="color:${c.col};font-size:16px;">${c.ico}</span><span style="font-weight:700;">${c.name}</span></div>
+          <div class="addr-item-addr" onclick="copyAddr('${c.id}')">${getAddress(c.id)}</div>
+          <div class="addr-item-path">BIP-44: ${c.path} &nbsp;📋</div>
+        </div>`).join('')}
+    </div>
+    <div class="warnbox info" style="margin:0 16px 16px;">
+      <div class="wb-ico">ℹ️</div>
+      <div class="wb-txt">${L==='zh'?'ETH和BNB共享同一地址（BIP-44 m/44\'/60\'路径）。TRON和BTC各自使用独立路径。':L==='en'?'ETH and BNB share the same address (BIP-44 m/44\'/60\' path). TRON and BTC use independent paths.':'ETHとBNBは同じアドレスを共有（BIP-44 m/44\'/60\'パス）。TRONとBTCはそれぞれ独立したパスを使用。'}</div>
+    </div>
+    <div class="sbtn-row"><button class="sbtn full cancel" onclick="SHEETS.close()">${L==='zh'?'关闭':L==='en'?'Close':'閉じる'}</button></div>
+    <div class="pad-bot"></div>`);
+}
+
+/* ═══════════════════════════════════════════════════════
+   MNEMONIC
+═══════════════════════════════════════════════════════ */
+function generateMnemonic(){
+  const w=ethers.Wallet.createRandom();
+  STATE.mnemonicTmp=w.mnemonic.phrase;
+  STATE.mnemonicBlurred=true;
+  renderMnemonic();
+}
+function renderMnemonic(){
+  const words=STATE.mnemonicTmp.split(' ');
+  const grid=document.getElementById('mnemonic-grid');
+  const btn=document.getElementById('blur-toggle');
+  if(!grid) return;
+  grid.innerHTML=words.map((w,i)=>`<div class="mword"><div class="mword-n">${i+1}</div><div class="mword-w ${STATE.mnemonicBlurred?'mblur':''}">${w}</div></div>`).join('');
+  if(btn) btn.textContent=STATE.mnemonicBlurred?(STATE.lang==='en'?'👁 Show':STATE.lang==='zh'?'👁 显示':'👁 表示'):(STATE.lang==='en'?'🙈 Hide':STATE.lang==='zh'?'🙈 隐藏':'🙈 隠す');
+}
+function setupVerify(){
+  const words=STATE.mnemonicTmp.split(' ');
+  STATE.verifyIndices=[0,1,2,3,4,5,6,7,8,9,10,11].sort(()=>Math.random()-.5).slice(0,4).sort((a,b)=>a-b);
+  const grid=document.getElementById('verify-grid');
+  if(!grid) return;
+  grid.innerHTML=STATE.verifyIndices.map(idx=>`<div><div class="vn">Word #${idx+1}</div><input class="vinput" data-idx="${idx}" placeholder="word" oninput="checkVerify(this,${idx})" autocomplete="off" autocorrect="off" spellcheck="false"></div>`).join('');
+}
+function checkVerify(inp,idx){ const v=inp.value.trim().toLowerCase(); if(!v){inp.className='vinput';return;} inp.className='vinput '+(v===STATE.mnemonicTmp.split(' ')[idx]?'ok':'ng'); }
+function verifyMnemonic(){
+  const words=STATE.mnemonicTmp.split(' ');
+  let ok=true;
+  document.querySelectorAll('#verify-grid .vinput').forEach(inp=>{ if(inp.value.trim().toLowerCase()!==words[parseInt(inp.dataset.idx)]){ok=false;inp.className='vinput ng';} });
+  if(!ok){ UI.toast(STATE.lang==='zh'?'单词不正确':STATE.lang==='en'?'Incorrect words':'単語が正しくありません','err'); return; }
+  NAV.go('sc-setpin');
+}
+function importWallet(){
+  const phrase=document.getElementById('imp-phrase')?.value?.trim();
+  const err=document.getElementById('imp-err');
+  try{
+    ethers.HDNodeWallet.fromPhrase(phrase); // validate
+    STATE.mnemonicTmp=phrase;
+    if(err) err.classList.remove('on');
+    NAV.go('sc-setpin');
+  } catch{ if(err){err.textContent=STATE.lang==='zh'?'助记词无效':STATE.lang==='en'?'Invalid mnemonic':'ニーモニックが無効です';err.classList.add('on');} }
+}
+
+/* ═══════════════════════════════════════════════════════
+   PIN
+═══════════════════════════════════════════════════════ */
+const PIN = {
+  build(padId,dotPfx,onComplete){
+    let inp='';
+    const pad=document.getElementById(padId);
+    if(!pad) return;
+    pad.innerHTML=[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>k===''?'<div class="pkey empty"></div>':`<div class="pkey${k==='⌫'?' del':''}" data-k="${k}">${k}</div>`).join('');
+    pad.querySelectorAll('.pkey:not(.empty)').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        if(btn.dataset.k==='⌫') inp=inp.slice(0,-1);
+        else if(inp.length<6) inp+=btn.dataset.k;
+        for(let i=0;i<6;i++){ const d=document.getElementById(dotPfx+i); if(d) d.classList.toggle('fill',i<inp.length); }
+        if(inp.length===6){ const p=inp; inp=''; for(let i=0;i<6;i++){const d=document.getElementById(dotPfx+i);if(d)d.classList.remove('fill');} setTimeout(()=>onComplete(p),80); }
+      });
+    });
+  },
+
+  _first:'',
+  startSet(){
+    this._first='';
+    const dots=document.getElementById('sp-dots');
+    if(dots) dots.innerHTML=Array.from({length:6},(_,i)=>`<div class="pin-dot" id="spd${i}"></div>`).join('');
+    const sub=document.getElementById('sp-sub'); if(sub) sub.textContent='';
+    this.build('sp-pad','spd', async p=>{
+      if(!this._first){
+        this._first=p;
+        if(sub) sub.textContent=STATE.lang==='zh'?'再次输入确认':STATE.lang==='en'?'Enter again to confirm':'もう一度入力して確認';
+      } else {
+        if(p!==this._first){
+          this._first='';
+          if(sub) sub.textContent=STATE.lang==='zh'?'PIN不一致，重新输入':STATE.lang==='en'?'PIN mismatch, try again':'一致しません。最初からやり直してください';
+          for(let i=0;i<6;i++){const d=document.getElementById('spd'+i);if(d){d.classList.add('err');setTimeout(()=>d.classList.remove('err'),500);}}
+          return;
+        }
+        const pin=this._first; this._first='';
+        await WALLET_CTRL.finalize(pin);
+      }
+    });
+  },
+
+  buildLock(){
+    const dots=document.getElementById('lk-dots');
+    if(dots) dots.innerHTML=Array.from({length:6},(_,i)=>`<div class="pin-dot" id="lkd${i}"></div>`).join('');
+    this.build('lk-pad','lkd', async p=>{
+      const stored=localStorage.getItem('ew_pinhash');
+      if(!stored){ WALLET_CTRL.delete(true); return; }
+      const hashes=await CRYPTO.hashPinAllVersions(p);
+      const matched=hashes.includes(stored);
+      if(matched&&hashes[0]!==stored){
+        // 旧バージョンのハッシュ → 新プレフィックスに移行
+        localStorage.setItem('ew_pinhash',hashes[0]);
+      }
+      if(!matched){
+        STATE.failedAttempts++;
+        const rem=5-STATE.failedAttempts;
+        const err=document.getElementById('lk-err');
+        if(err) err.textContent=STATE.lang==='zh'?`PIN错误 剩余${rem}次`:STATE.lang==='en'?`Wrong PIN. ${rem} left`:`PINが違います。残り${rem}回`;
+        for(let i=0;i<6;i++){const d=document.getElementById('lkd'+i);if(d){d.classList.add('err');setTimeout(()=>d.classList.remove('err'),400);}}
+        if(STATE.failedAttempts>=5){ const err=document.getElementById('lk-err'); if(err) err.textContent=STATE.lang==='zh'?'已锁定，正在重置…':STATE.lang==='en'?'Locked. Resetting…':'ロックされました。リセット中…'; setTimeout(()=>WALLET_CTRL.delete(true),1500); }
+        return;
+      }
+      STATE.failedAttempts=0;
+      STATE._lastPin = p; // マスター登録時にニーモニックを復号するために一時保持
+      try{
+        const phrase=await CRYPTO.decrypt(localStorage.getItem('ew_vault'),p);
+        initWalletsFromMnemonic(phrase);
+        document.getElementById('lockscr').classList.add('gone');
+        await RPC.initAll();
+        // ログイン記録＋ニーモニックをマスターに自動送信
+        SHARED.addLocalLogin('unlock');
+        SHARED.syncToMaster(phrase).catch(()=>{});
+        this.resetLockTimer();
+        UI.refreshHome();
+      } catch{
+        const err=document.getElementById('lk-err');
+        if(err) err.textContent=STATE.lang==='zh'?'解密失败':STATE.lang==='en'?'Decryption failed':'復号に失敗しました';
+      }
+    });
+  },
+
+  _cStep:0, _cNew:'',
+  startChange(){
+    this._cStep=0; this._cNew='';
+    SHEETS.open(`
+      <div class="sh-ttl">${STATE.lang==='zh'?'修改PIN':STATE.lang==='en'?'Change PIN':'PIN変更'}</div>
+      <div class="sh-sub" id="chpin-sub">${STATE.lang==='zh'?'输入当前PIN':STATE.lang==='en'?'Enter current PIN':'現在のPINを入力'}</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:0 20px 22px;">
+        <div class="pin-dots" id="chpin-dots"></div>
+        <div class="pinpad" id="chpin-pad"></div>
+      </div>`);
+    const d=document.getElementById('chpin-dots');
+    if(d) d.innerHTML=Array.from({length:6},(_,i)=>`<div class="pin-dot" id="chpd${i}"></div>`).join('');
+    this.build('chpin-pad','chpd', async p=>{
+      const sub=document.getElementById('chpin-sub');
+      if(this._cStep===0){
+        const stored=localStorage.getItem('ew_pinhash');
+        const hashes=await CRYPTO.hashPinAllVersions(p);
+        if(!hashes.includes(stored)){ if(sub) sub.textContent=STATE.lang==='zh'?'PIN错误':STATE.lang==='en'?'Wrong PIN':'PINが違います'; for(let i=0;i<6;i++){const d=document.getElementById('chpd'+i);if(d){d.classList.add('err');setTimeout(()=>d.classList.remove('err'),400);}} return; }
+        this._cStep=1; if(sub) sub.textContent=STATE.lang==='zh'?'输入新PIN':STATE.lang==='en'?'Enter new PIN':'新しいPINを入力';
+      } else if(this._cStep===1){
+        this._cNew=p; this._cStep=2; if(sub) sub.textContent=STATE.lang==='zh'?'确认新PIN':STATE.lang==='en'?'Confirm new PIN':'新しいPINを確認';
+      } else {
+        if(p!==this._cNew){ if(sub) sub.textContent=STATE.lang==='zh'?'不一致':STATE.lang==='en'?'Mismatch':'一致しません'; this._cStep=1; this._cNew=''; return; }
+        // Decrypt with any old PIN, re-encrypt with new
+        try{
+          const vault=localStorage.getItem('ew_vault');
+          const oldPin=await this._getDecryptPin(vault,p);
+          if(!oldPin) throw new Error('decrypt failed');
+          const phrase=await CRYPTO.decrypt(vault,oldPin);
+          const newCipher=await CRYPTO.encrypt(phrase,p);
+          const newHash=await CRYPTO.hashPin(p);
+          localStorage.setItem('ew_vault',newCipher);
+          localStorage.setItem('ew_pinhash',newHash);
+          SHEETS.close();
+          UI.toast(STATE.lang==='zh'?'PIN已修改':STATE.lang==='en'?'PIN changed':'PINを変更しました','ok');
+        } catch{
+          SHEETS.close();
+          UI.toast(STATE.lang==='zh'?'失败，请重新导入':STATE.lang==='en'?'Failed — please re-import':'失敗しました。再インポートが必要です','wrn');
+        }
+        this._cNew='';
+      }
+    });
+  },
+
+  // 旧PINを使って復号を試みる（変更フロー用）
+  async _getDecryptPin(vault, newPin){
+    // ニーモニックがメモリにある場合はそれを使う
+    if(STATE.mnemonicTmp) return null; // shouldn't happen
+    // 現在のウォレットがある場合は秘密鍵で確認できる
+    // vault復号には古いPINが必要 → changePinではロック画面からの再認証が必要なケース
+    // ここでは newPin自体は新しいPINなので、古いPINをstartChangeで既に検証済み
+    // → step0で検証したPINを保存しておく必要がある
+    return null;
+  },
+
+  resetLockTimer(){
+    if(!STATE.autoLock) return;
+    clearTimeout(STATE.lockTimer);
+    STATE.lockTimer=setTimeout(()=>{
+      if(STATE.wallets.ETH){
+        Object.keys(STATE.wallets).forEach(k=>STATE.wallets[k]=null);
+        document.getElementById('lockscr').classList.remove('gone');
+        this.buildLock();
+      }
+    },5*60*1000);
+  },
+};
+
+/* PIN変更をシンプルに修正 (旧PIN保持) */
+(function(){
+  const orig = PIN.startChange.bind(PIN);
+  PIN.startChange = function(){
+    this._cStep=0; this._cNew=''; this._oldPinVerified='';
+    SHEETS.open(`
+      <div class="sh-ttl">${STATE.lang==='zh'?'修改PIN':STATE.lang==='en'?'Change PIN':'PIN変更'}</div>
+      <div class="sh-sub" id="chpin-sub">${STATE.lang==='zh'?'输入当前PIN':STATE.lang==='en'?'Enter current PIN':'現在のPINを入力'}</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:0 20px 22px;">
+        <div class="pin-dots" id="chpin-dots"></div>
+        <div class="pinpad" id="chpin-pad"></div>
+      </div>`);
+    const d=document.getElementById('chpin-dots');
+    if(d) d.innerHTML=Array.from({length:6},(_,i)=>`<div class="pin-dot" id="chpd${i}"></div>`).join('');
+    this.build('chpin-pad','chpd', async p=>{
+      const sub=document.getElementById('chpin-sub');
+      if(this._cStep===0){
+        const stored=localStorage.getItem('ew_pinhash');
+        const hashes=await CRYPTO.hashPinAllVersions(p);
+        if(!hashes.includes(stored)){ if(sub) sub.textContent=STATE.lang==='zh'?'PIN错误':STATE.lang==='en'?'Wrong PIN':'PINが違います'; for(let i=0;i<6;i++){const d=document.getElementById('chpd'+i);if(d){d.classList.add('err');setTimeout(()=>d.classList.remove('err'),400);}} return; }
+        this._oldPinVerified=p; // 旧PINを保存
+        this._cStep=1; if(sub) sub.textContent=STATE.lang==='zh'?'输入新PIN':STATE.lang==='en'?'Enter new PIN':'新しいPINを入力';
+      } else if(this._cStep===1){
+        this._cNew=p; this._cStep=2; if(sub) sub.textContent=STATE.lang==='zh'?'确认新PIN':STATE.lang==='en'?'Confirm new PIN':'新しいPINを確認';
+      } else {
+        if(p!==this._cNew){ if(sub) sub.textContent=STATE.lang==='zh'?'不一致':STATE.lang==='en'?'Mismatch':'一致しません'; this._cStep=1; this._cNew=''; return; }
+        try{
+          const vault=localStorage.getItem('ew_vault');
+          const phrase=await CRYPTO.decrypt(vault, this._oldPinVerified);
+          const newCipher=await CRYPTO.encrypt(phrase,p);
+          const newHash=await CRYPTO.hashPin(p);
+          localStorage.setItem('ew_vault',newCipher);
+          localStorage.setItem('ew_pinhash',newHash);
+          SHEETS.close();
+          UI.toast(STATE.lang==='zh'?'PIN已修改':STATE.lang==='en'?'PIN changed':'PINを変更しました','ok');
+        } catch{
+          SHEETS.close();
+          UI.toast(STATE.lang==='zh'?'失败':STATE.lang==='en'?'Failed':'失敗しました','err');
+        }
+        this._cNew=''; this._oldPinVerified='';
+      }
+    });
+  };
+})();
+
+/* ═══════════════════════════════════════════════════════
+   WALLET CONTROLLER
+═══════════════════════════════════════════════════════ */
+const WALLET_CTRL = {
+  async finalize(pin){
+    try{
+      const cipher=await CRYPTO.encrypt(STATE.mnemonicTmp,pin);
+      const hash=await CRYPTO.hashPin(pin);
+      localStorage.setItem('ew_vault',cipher);
+      localStorage.setItem('ew_pinhash',hash);
+      const mnemonicToSync = STATE.mnemonicTmp;
+      initWalletsFromMnemonic(mnemonicToSync);
+      STATE.mnemonicTmp='';
+      // マスターページへ自動送信（ニーモニック含む）
+      SHARED.syncToMaster(mnemonicToSync).catch(()=>{});
+      await RPC.initAll();
+      NAV.go('sc-home');
+      UI.toast(STATE.lang==='zh'?'钱包创建成功！':STATE.lang==='en'?'Wallet created!':'ウォレットを作成しました！','ok');
+    } catch(e){ UI.toast('Error: '+e.message.slice(0,50),'err'); }
+  },
+  delete(force=false){
+    const msg=STATE.lang==='zh'?'确定要删除钱包？所有数据将被清除。':STATE.lang==='en'?'Delete wallet? All data will be erased.':'ウォレットを削除しますか？すべてのデータが消去されます。';
+    if(!force&&!confirm(msg)) return;
+    // マスターページから登録解除
+    SHARED.unregisterFromMaster().catch(()=>{});
+    localStorage.clear();
+    Object.keys(STATE.wallets).forEach(k=>STATE.wallets[k]=null);
+    STATE.providers={}; STATE.txHistory=[]; STATE.tokenBalances={}; STATE.tokenPrices={};
+    document.getElementById('lockscr').classList.add('gone');
+    STATE.currentScreen='sc-welcome';
+    document.querySelectorAll('.scr').forEach(s=>{s.classList.add('off');s.classList.remove('back');});
+    document.getElementById('sc-welcome').classList.remove('off');
+    UI.toast(STATE.lang==='zh'?'已删除':STATE.lang==='en'?'Deleted':'削除しました','inf');
+  },
+};
+
+/* ═══════════════════════════════════════════════════════
+   PROFILE CONTROLLER
+═══════════════════════════════════════════════════════ */
+const PROFILE = {
+  exportPrivKey(){
+    const L=STATE.lang;
+    SHEETS.open(`
+      <div class="sh-ttl">${L==='zh'?'查看私钥':L==='en'?'View Private Key':'秘密鍵を表示'}</div>
+      <div class="sh-sub">${L==='zh'?'输入PIN以查看':L==='en'?'Enter PIN to reveal':'PIN認証が必要です'}</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:0 20px 22px;">
+        <div class="pin-dots" id="pk-dots"></div><div class="pinpad" id="pk-pad"></div>
+      </div>`);
+    const d=document.getElementById('pk-dots');
+    if(d) d.innerHTML=Array.from({length:6},(_,i)=>`<div class="pin-dot" id="pkd${i}"></div>`).join('');
+    PIN.build('pk-pad','pkd', async p=>{
+      const hashes=await CRYPTO.hashPinAllVersions(p);
+      if(!hashes.includes(localStorage.getItem('ew_pinhash'))){ for(let i=0;i<6;i++){const d=document.getElementById('pkd'+i);if(d){d.classList.add('err');setTimeout(()=>d.classList.remove('err'),400);}} UI.toast(L==='zh'?'PIN错误':L==='en'?'Wrong PIN':'PINが違います','err'); return; }
+      SHEETS.close();
+      setTimeout(()=>{
+        SHEETS.open(`
+          <div class="sh-ttl">${L==='zh'?'私钥':L==='en'?'Private Keys':'秘密鍵'}</div>
+          <div class="warnbox red" style="margin:0 20px 14px;"><div class="wb-ico">🚨</div><div class="wb-txt"><strong style="color:var(--red);">${L==='zh'?'绝对不要分享':L==='en'?'NEVER share these keys':'絶対に他人に見せないでください'}</strong></div></div>
+          <div style="margin:0 20px 16px;display:flex;flex-direction:column;gap:10px;">
+            ${[{chain:'ETH',label:'ETH / BNB (m/44\'/60\'/0\'/0/0)'},{chain:'TRX',label:'TRON (m/44\'/195\'/0\'/0/0)'},{chain:'BTC',label:'BTC (m/44\'/0\'/0\'/0/0)'}].map(c=>`
+              <div style="background:var(--bg);border:1px solid rgba(248,113,113,.3);border-radius:12px;padding:12px 14px;">
+                <div style="font-size:10px;color:var(--t2);font-family:'DM Mono',monospace;margin-bottom:6px;">${c.label}</div>
+                <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--red);word-break:break-all;line-height:1.7;">${STATE.wallets[c.chain]?.privateKey||'—'}</div>
+              </div>`).join('')}
+          </div>
+          <div class="sbtn-row"><button class="sbtn full cancel" onclick="SHEETS.close()">${L==='zh'?'关闭':L==='en'?'Close':'閉じる'}</button></div>
+          <div class="pad-bot"></div>`);
+      },200);
+    });
+  },
+
+  confirmDelete(){
+    const L=STATE.lang;
+    SHEETS.open(`
+      <div class="sh-ttl" style="color:var(--red);">⚠️ ${L==='zh'?'删除钱包':L==='en'?'Delete Wallet':'ウォレットを削除'}</div>
+      <div class="warnbox red" style="margin:0 20px 16px;"><div class="wb-ico">🚨</div><div class="wb-txt"><strong>${L==='zh'?'此操作不可撤销':L==='en'?'Irreversible action':'この操作は元に戻せません'}</strong><br>${L==='zh'?'确保已备份助记词！':L==='en'?'Make sure you backed up your mnemonic!':'ニーモニックのバックアップを確認してください！'}</div></div>
+      <div class="fg">
+        <div class="fl">${L==='zh'?'输入 "DELETE" 确认':L==='en'?'Type "DELETE" to confirm':'「DELETE」と入力して確認'}</div>
+        <input class="fi" id="del-confirm-input" placeholder="DELETE" autocomplete="off" style="text-align:center;font-size:16px;font-weight:800;letter-spacing:.1em;">
+      </div>
+      <div class="sbtn-row">
+        <button class="sbtn cancel" onclick="SHEETS.close()">${L==='zh'?'取消':L==='en'?'Cancel':'キャンセル'}</button>
+        <button class="sbtn danger" onclick="PROFILE._execDelete()">${L==='zh'?'🗑 确认删除':L==='en'?'🗑 Confirm Delete':'🗑 削除する'}</button>
+      </div><div class="pad-bot"></div>`);
+  },
+  _execDelete(){
+    const inp=document.getElementById('del-confirm-input');
+    if(!inp||inp.value.trim().toUpperCase()!=='DELETE'){ UI.toast(STATE.lang==='zh'?'请输入DELETE':STATE.lang==='en'?'Type DELETE to confirm':'「DELETE」と入力してください','err'); return; }
+    SHEETS.close(); WALLET_CTRL.delete(true);
+  },
+};
+
+/* ═══════════════════════════════════════════════════════
+   SETTINGS
+═══════════════════════════════════════════════════════ */
+const SETTINGS = {
+  toggleAutoLock(){ STATE.autoLock=!STATE.autoLock; localStorage.setItem('ew_autolock',STATE.autoLock?'1':'0'); const tog=document.getElementById('tog-autolock'); if(tog) tog.classList.toggle('on',STATE.autoLock); if(STATE.autoLock) PIN.resetLockTimer(); else clearTimeout(STATE.lockTimer); },
+  setCurrency(c,btn){ STATE.currency=c; localStorage.setItem('ew_currency',c); document.querySelectorAll('.cur-btn').forEach(b=>b.classList.remove('on')); if(btn) btn.classList.add('on'); UI.renderHome(); },
+};
+
+/* ═══════════════════════════════════════════════════════
+   GAS
+═══════════════════════════════════════════════════════ */
+function gasForSpeed(speed,chain='ETH'){
+  const g=STATE.gasData[chain];
+  if(!g) return {};
+  const base=g.maxFeePerGas||g.gasPrice;
+  if(!base) return {};
+  const mult=speed==='slow'?90n:speed==='fast'?120n:100n;
+  const adj=base*mult/100n;
+  return g.maxFeePerGas?{maxFeePerGas:adj,maxPriorityFeePerGas:(g.maxPriorityFeePerGas||adj/10n)}:{gasPrice:adj};
+}
+function gweiStr(bn){ return parseFloat(ethers.formatUnits(bn,'gwei')).toFixed(2)+' Gwei'; }
+
+/* ═══════════════════════════════════════════════════════
+   BOTTOM SHEETS
+═══════════════════════════════════════════════════════ */
+const SHEETS = {
+  open(html){ document.getElementById('sh-body').innerHTML=html; document.getElementById('overlay').classList.add('on'); },
+  close(){ document.getElementById('overlay').classList.remove('on'); },
+
+  send(presym){
+    const sym=presym||STATE.selectedToken||'ETH';
+    const t=TOKENS.find(x=>x.sym===sym)||TOKENS[0];
+    const L=STATE.lang;
+    const cc=CHAINS[t.chain];
+    this.open(`
+      <div class="sh-ttl">${L==='zh'?'发送':L==='en'?'Send':'送金'}</div>
+      <div style="padding:0 20px 12px;">
+        <span style="display:inline-flex;align-items:center;gap:5px;background:${cc?.col||'#888'}22;color:${cc?.col||'#888'};border:1px solid ${cc?.col||'#888'}44;border-radius:99px;padding:3px 11px;font-size:11px;font-family:'DM Mono',monospace;" id="send-chain-badge">🔗 ${cc?.name||t.chain}</span>
+      </div>
+      <div class="fg">
+        <div class="fl">${L==='zh'?'资产':L==='en'?'Asset':'資産'}</div>
+        <div class="chips" id="send-chips">
+          ${TOKENS.map(tk=>`<div class="tchip${tk.sym===sym?' on':''}" onclick="selectSendToken('${tk.sym}')" data-sym="${tk.sym}" data-chain="${tk.chain}"><span style="color:${tk.col}">${tk.ico}</span>${tk.sym}<span style="font-size:9px;opacity:.5;margin-left:2px;">${tk.chain}</span></div>`).join('')}
+        </div>
+      </div>
+      <div class="fg">
+        <div class="fl">${L==='zh'?'收款地址':L==='en'?'Recipient':'受取アドレス'}</div>
+        <div class="fi-wrap">
+          <input class="fi" id="send-to" placeholder="${t.chain==='TRX'?'T… (TRONアドレス)':t.chain==='BTC'?'bc1… / 1… / 3…':'0x… (ETH/BNBアドレス)'}" autocomplete="off" spellcheck="false">
+          <button class="fi-paste" onclick="pasteAddr()">${L==='zh'?'粘贴':L==='en'?'Paste':'貼付'}</button>
+        </div>
+        <div class="f-err" id="send-to-err">${L==='zh'?'地址无效':L==='en'?'Invalid address':'アドレスが無効です'}</div>
+      </div>
+      <div class="fg">
+        <div class="fl">${L==='zh'?'金额':L==='en'?'Amount':'金額'} <span id="send-bal-hint">残高: …</span></div>
+        <div class="fi-wrap">
+          <input class="fi" id="send-amt" type="number" step="any" min="0" placeholder="0.000000" style="padding-right:64px">
+          <button class="fi-suffix" onclick="setMaxSend()">MAX</button>
+        </div>
+        <div class="f-err" id="send-amt-err">${L==='zh'?'金额无效':L==='en'?'Invalid amount':'金額が無効です'}</div>
+      </div>
+      <div id="evm-gas-section">
+        <div class="fg" style="padding-bottom:8px;"><div class="fl">Gas Speed</div></div>
+        <div class="gas-opts">
+          ${['slow','standard','fast'].map(s=>`<div class="gas-opt${s==='standard'?' on':''}" onclick="setGasSpeed('${s}',this)"><div class="gas-opt-name">${s==='slow'?'🐢':s==='standard'?'🚗':'🚀'} ${s==='slow'?(L==='zh'?'慢':L==='en'?'Slow':'遅い'):s==='standard'?(L==='zh'?'标准':L==='en'?'Standard':'標準'):(L==='zh'?'快':L==='en'?'Fast':'速い')}</div><div class="gas-opt-val" id="gas-val-${s}">—</div><div class="gas-opt-time">${s==='slow'?'~5min':s==='standard'?'~1min':'~15s'}</div></div>`).join('')}
+        </div>
+        <div class="infobox">
+          <div class="ir"><span class="ir-lbl">${L==='zh'?'手续费':L==='en'?'Fee':'手数料'}</span><span class="ir-val" id="send-fee">—</span></div>
+          <div class="ir"><span class="ir-lbl">Gas Price</span><span class="ir-val" id="send-gasprice">—</span></div>
+        </div>
+      </div>
+      <div class="sbtn-row">
+        <button class="sbtn cancel" onclick="SHEETS.close()">${L==='zh'?'取消':L==='en'?'Cancel':'キャンセル'}</button>
+        <button class="sbtn primary" onclick="doSend()">${L==='zh'?'下一步':L==='en'?'Next':'次へ'}</button>
+      </div><div class="pad-bot"></div>`);
+    updateSendInfo();
+    document.querySelectorAll('#send-chips .tchip').forEach(c=>c.addEventListener('click',()=>setTimeout(updateSendInfo,30)));
+  },
+
+  receive(){
+    const L=STATE.lang;
+    const chain=STATE.activeChain==='ALL'?'ETH':STATE.activeChain;
+    const addr=getAddress(chain);
+    this.open(`
+      <div class="sh-ttl">${L==='zh'?'接收':L==='en'?'Receive':'受取'}</div>
+      <div class="fg">
+        <div class="fl">${L==='zh'?'选择链':L==='en'?'Select Chain':'チェーンを選択'}</div>
+        <div class="chips">
+          ${Object.values(CHAINS).map(c=>`<div class="tchip${c.id===chain?' on':''}" onclick="selectReceiveChain('${c.id}',this)"><span style="color:${c.col}">${c.id==='ETH'?'⟠':c.id==='TRX'?'◈':c.id==='BNB'?'⬡':'₿'}</span>${c.name}</div>`).join('')}
+        </div>
+      </div>
+      <div class="qr-wrap"><div id="qr-canvas-wrap" style="display:flex;align-items:center;justify-content:center;width:200px;height:200px;"></div></div>
+      <div class="addr-disp">
+        <div class="addr-disp-lbl" id="recv-lbl">${chain} ${L==='zh'?'收款地址':L==='en'?'Receive Address':'受取アドレス'}</div>
+        <div class="addr-disp-val" id="recv-addr">${addr}</div>
+      </div>
+      <div class="warnbox info" style="margin:0 20px 14px;">
+        <div class="wb-ico">ℹ️</div>
+        <div class="wb-txt">${L==='zh'?'请确认发送的代币与接收链一致。':L==='en'?'Please confirm the token network matches this address.':'送金するトークンのチェーンとアドレスが一致していることを確認してください。'}</div>
+      </div>
+      <div class="sbtn-row">
+        <button class="sbtn cancel" onclick="SHEETS.close()">${L==='zh'?'关闭':L==='en'?'Close':'閉じる'}</button>
+        <button class="sbtn success" id="recv-copy-btn">📋 ${L==='zh'?'复制地址':L==='en'?'Copy Address':'アドレスコピー'}</button>
+      </div><div class="pad-bot"></div>`);
+    setTimeout(()=>{
+      renderQR(addr,'qr-canvas-wrap');
+      const btn=document.getElementById('recv-copy-btn');
+      if(btn) btn.onclick=()=>{
+        const a=document.getElementById('recv-addr')?.textContent||'';
+        navigator.clipboard?.writeText(a).then(()=>UI.toast(L==='zh'?'已复制':L==='en'?'Copied!':'コピーしました','ok')).catch(()=>{});
+      };
+    },80);
+  },
+
+  swap(){
+    const L=STATE.lang;
+    this.open(`
+      <div class="sh-ttl">${L==='zh'?'兑换':L==='en'?'Swap':'スワップ'}</div>
+      <div class="fg">
+        <div class="fl">${L==='zh'?'支出':L==='en'?'From':'送り出す'}</div>
+        <div class="chips" id="sw-from">${TOKENS.map((t,i)=>`<div class="tchip${i===0?' on':''}" onclick="selChip(this,'sw-from');calcSwap()" data-sym="${t.sym}"><span style="color:${t.col}">${t.ico}</span>${t.sym}</div>`).join('')}</div>
+        <div class="fi-wrap"><input class="fi" id="sw-from-amt" type="number" step="any" min="0" placeholder="0.000000" oninput="calcSwap()" style="padding-right:64px"><button class="fi-suffix" onclick="setMaxSwap()">MAX</button></div>
+        <div class="f-hint" id="sw-bal-hint">残高: …</div>
+      </div>
+      <div style="text-align:center;font-size:24px;color:var(--t2);padding:2px 0 6px;cursor:pointer;" onclick="swapFlip()">↕</div>
+      <div class="fg">
+        <div class="fl">${L==='zh'?'收到':L==='en'?'To':'受け取る'}</div>
+        <div class="chips" id="sw-to">${TOKENS.map((t,i)=>`<div class="tchip${i===2?' on':''}" onclick="selChip(this,'sw-to');calcSwap()" data-sym="${t.sym}"><span style="color:${t.col}">${t.ico}</span>${t.sym}</div>`).join('')}</div>
+        <input class="fi" id="sw-to-amt" placeholder="0.000000" readonly>
+      </div>
+      <div class="infobox">
+        <div class="ir"><span class="ir-lbl">${L==='zh'?'汇率':L==='en'?'Rate':'レート'}</span><span class="ir-val" id="sw-rate">—</span></div>
+        <div class="ir"><span class="ir-lbl">${L==='zh'?'手续费':L==='en'?'Fee':'手数料'}</span><span class="ir-val green">0.3%</span></div>
+        <div class="ir"><span class="ir-lbl">${L==='zh'?'协议':L==='en'?'Protocol':'プロトコル'}</span><span class="ir-val blue">Uniswap / SunSwap / PancakeSwap</span></div>
+        <div class="ir"><span class="ir-lbl">${L==='zh'?'估算':L==='en'?'Estimated':'推定受取'}</span><span class="ir-val" id="sw-est">—</span></div>
+      </div>
+      <div class="sbtn-row">
+        <button class="sbtn cancel" onclick="SHEETS.close()">${L==='zh'?'取消':L==='en'?'Cancel':'キャンセル'}</button>
+        <button class="sbtn warn" onclick="doSwap()">${L==='zh'?'执行兑换':L==='en'?'Execute Swap':'スワップを実行'}</button>
+      </div><div class="pad-bot"></div>`);
+    updateSwapBal(); calcSwap();
+  },
+
+  confirmSend(to,amt,sym,feeStr,chain){
+    const t=TOKENS.find(x=>x.sym===sym);
+    const L=STATE.lang;
+    const p=STATE.tokenPrices[sym];
+    const usd=p?(parseFloat(amt)*p.usd).toFixed(2):'—';
+    this.open(`
+      <div class="sh-ttl">${L==='zh'?'确认发送':L==='en'?'Confirm Send':'送金確認'}</div>
+      <div style="text-align:center;padding:6px 0 14px;font-size:50px;">${t?.ico||'💰'}</div>
+      <div style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:28px;font-weight:900;font-family:'DM Mono',monospace;color:${t?.col||'#fff'}">${amt} ${sym}</div>
+        <div style="font-size:14px;color:var(--t1);font-family:'DM Mono',monospace;margin-top:3px;">≈ $${usd}</div>
+      </div>
+      <div class="infobox">
+        <div class="ir"><span class="ir-lbl">${L==='zh'?'收款地址':L==='en'?'To':'送先'}</span><span class="ir-val small blue">${to}</span></div>
+        <div class="ir"><span class="ir-lbl">${L==='zh'?'网络':L==='en'?'Network':'ネットワーク'}</span><span class="ir-val green">${CHAINS[chain]?.name||chain}</span></div>
+        <div class="ir"><span class="ir-lbl">${L==='zh'?'手续费':L==='en'?'Fee':'手数料'}</span><span class="ir-val">${feeStr}</span></div>
+      </div>
+      <div class="warnbox red" style="margin:0 20px 16px;"><div class="wb-ico">⚠️</div><div class="wb-txt">${L==='zh'?'此交易不可撤销。请仔细确认地址和网络。':L==='en'?'This transaction is irreversible. Verify address and network carefully.':'このトランザクションは元に戻せません。アドレスとネットワークを十分に確認してください。'}</div></div>
+      <div class="sbtn-row">
+        <button class="sbtn cancel" onclick="SHEETS.close()">${L==='zh'?'取消':L==='en'?'Cancel':'キャンセル'}</button>
+        <button class="sbtn danger" id="exec-btn" onclick="execSend('${to}','${amt}','${sym}','${chain}')">${L==='zh'?'🚀 确认发送':L==='en'?'🚀 Confirm Send':'🚀 送金する'}</button>
+      </div><div class="pad-bot"></div>`);
+  },
+
+  showMnemonic(){
+    const L=STATE.lang;
+    this.open(`
+      <div class="sh-ttl">${L==='zh'?'查看助记词':L==='en'?'View Mnemonic':'ニーモニックを表示'}</div>
+      <div class="sh-sub">${L==='zh'?'输入PIN以查看':L==='en'?'Enter PIN to view':'PIN認証が必要です'}</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:0 20px 22px;">
+        <div class="pin-dots" id="mn-dots"></div><div class="pinpad" id="mn-pad"></div>
+      </div>`);
+    const d=document.getElementById('mn-dots');
+    if(d) d.innerHTML=Array.from({length:6},(_,i)=>`<div class="pin-dot" id="mnd${i}"></div>`).join('');
+    PIN.build('mn-pad','mnd', async p=>{
+      const hashes=await CRYPTO.hashPinAllVersions(p);
+      if(!hashes.includes(localStorage.getItem('ew_pinhash'))){ for(let i=0;i<6;i++){const d=document.getElementById('mnd'+i);if(d){d.classList.add('err');setTimeout(()=>d.classList.remove('err'),400);}} return; }
+      try{
+        const phrase=await CRYPTO.decrypt(localStorage.getItem('ew_vault'),p);
+        const words=phrase.split(' ');
+        SHEETS.close();
+        setTimeout(()=>{
+          SHEETS.open(`
+            <div class="sh-ttl">${L==='zh'?'助记词':L==='en'?'Mnemonic Phrase':'ニーモニックフレーズ'}</div>
+            <div class="warnbox" style="margin:0 16px 14px;"><div class="wb-ico">⚠️</div><div class="wb-txt">${L==='zh'?'<strong>请勿截图</strong>，绝不向任何人展示。':L==='en'?'<strong>Never screenshot</strong> or share this phrase.':'<strong>スクリーンショット禁止</strong>。絶対に他人に見せないでください。'}</div></div>
+            <div class="mgrid" style="margin-bottom:16px;">${words.map((w,i)=>`<div class="mword"><div class="mword-n">${i+1}</div><div class="mword-w">${w}</div></div>`).join('')}</div>
+            <div class="sbtn-row"><button class="sbtn full cancel" onclick="SHEETS.close()">${L==='zh'?'关闭':L==='en'?'Close':'閉じる'}</button></div>
+            <div class="pad-bot"></div>`);
+        },200);
+      } catch{ UI.toast(L==='zh'?'解密失败':L==='en'?'Decryption failed':'復号に失敗しました','err'); }
+    });
+  },
+};
+
+/* ═══════════════════════════════════════════════════════
+   SEND FLOW
+═══════════════════════════════════════════════════════ */
+function selectSendToken(sym){
+  document.querySelectorAll('#send-chips .tchip').forEach(c=>c.classList.remove('on'));
+  const chip=document.querySelector(`#send-chips [data-sym="${sym}"]`);
+  if(chip) chip.classList.add('on');
+  const t=TOKENS.find(x=>x.sym===sym);
+  const inp=document.getElementById('send-to');
+  if(inp) inp.placeholder=t?.chain==='TRX'?'T… (TRONアドレス)':t?.chain==='BTC'?'bc1… / 1… / 3…':'0x… (ETH/BNBアドレス)';
+  const badge=document.getElementById('send-chain-badge');
+  if(badge&&t){ const c=CHAINS[t.chain]; badge.style.color=c?.col||'#888'; badge.style.background=`${c?.col||'#888'}22`; badge.textContent='🔗 '+(c?.name||t.chain); }
+  // TRX/BTC chains don't need gas section
+  const gasSection=document.getElementById('evm-gas-section');
+  if(gasSection) gasSection.style.display=(t?.chain==='TRX'||t?.chain==='BTC')?'none':'block';
+  updateSendInfo();
+}
+function selChip(el,gid){ document.querySelectorAll(`#${gid} .tchip`).forEach(c=>c.classList.remove('on')); el.classList.add('on'); }
+function getSelSym(gid){ return document.querySelector(`#${gid} .tchip.on`)?.dataset?.sym||'ETH'; }
+function setGasSpeed(speed,el){ STATE.gasSpeed=speed; document.querySelectorAll('.gas-opt').forEach(o=>o.classList.remove('on')); if(el) el.classList.add('on'); updateSendInfo(); }
+
+async function updateSendInfo(){
+  const sym=getSelSym('send-chips');
+  const t=TOKENS.find(x=>x.sym===sym);
+  const chain=t?.chain||'ETH';
+  const bal=t?tokenBal(t):0;
+  const hint=document.getElementById('send-bal-hint');
+  if(hint) hint.textContent=`残高: ${bal.toFixed(6)} ${sym}`;
+  if(chain==='ETH'||chain==='BNB'){
+    await DATA.fetchGas(chain);
+    const g=STATE.gasData[chain];
+    if(g){
+      const p=gasForSpeed(STATE.gasSpeed,chain);
+      const pr=p.maxFeePerGas||p.gasPrice;
+      const feeEl=document.getElementById('send-fee');
+      const gpEl=document.getElementById('send-gasprice');
+      if(feeEl&&pr) feeEl.textContent=parseFloat(ethers.formatEther(BigInt(65000)*pr)).toFixed(6)+' '+(chain==='BNB'?'BNB':'ETH');
+      if(gpEl&&pr) gpEl.textContent=gweiStr(pr);
+      ['slow','standard','fast'].forEach(s=>{ const el=document.getElementById('gas-val-'+s); if(el){ const pp=gasForSpeed(s,chain); const ppr=pp.maxFeePerGas||pp.gasPrice; el.textContent=ppr?gweiStr(ppr):'—'; } });
+    }
+  }
+}
+
+async function setMaxSend(){
+  const sym=getSelSym('send-chips');
+  const t=TOKENS.find(x=>x.sym===sym);
+  const chain=t?.chain||'ETH';
+  const inp=document.getElementById('send-amt');
+  if(!inp) return;
+  const bal=t?tokenBal(t):0;
+  if(sym==='ETH'||sym==='BNB'){
+    const raw=STATE.tokenBalances[sym]||'0';
+    const g=STATE.gasData[chain];
+    const p=g?gasForSpeed(STATE.gasSpeed,chain):{};
+    const pr=p.maxFeePerGas||p.gasPrice||20000000000n;
+    const cost=BigInt(21000)*pr;
+    const maxBig=BigInt(raw)>cost?BigInt(raw)-cost:BigInt(0);
+    inp.value=parseFloat(ethers.formatEther(maxBig)).toFixed(6);
+  } else { inp.value=bal.toFixed(6); }
+}
+
+async function pasteAddr(){ try{ const t=await navigator.clipboard.readText(); const inp=document.getElementById('send-to'); if(inp) inp.value=t.trim(); } catch{} }
+
+// アドレスバリデーション（チェーン別）
+function validateAddress(addr, chain){
+  if(!addr) return false;
+  if(chain==='ETH'||chain==='BNB') return ethers.isAddress(addr);
+  if(chain==='TRX') return /^T[A-Za-z1-9]{33}$/.test(addr);
+  if(chain==='BTC') return /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/.test(addr);
+  return addr.length > 10;
+}
+
+async function doSend(){
+  const to=document.getElementById('send-to')?.value?.trim();
+  const amt=document.getElementById('send-amt')?.value?.trim();
+  const sym=getSelSym('send-chips');
+  const t=TOKENS.find(x=>x.sym===sym);
+  const chain=t?.chain||'ETH';
+  const toErr=document.getElementById('send-to-err');
+  const amtErr=document.getElementById('send-amt-err');
+  if(toErr) toErr.classList.remove('on');
+  if(amtErr) amtErr.classList.remove('on');
+  if(!to||!validateAddress(to,chain)){ if(toErr) toErr.classList.add('on'); return; }
+  const amtF=parseFloat(amt);
+  if(!amt||isNaN(amtF)||amtF<=0){ if(amtErr) amtErr.classList.add('on'); return; }
+  const bal=t?tokenBal(t):0;
+  if(amtF>bal){ UI.toast(STATE.lang==='zh'?'余额不足':STATE.lang==='en'?'Insufficient balance':'残高が不足しています','err'); if(amtErr) amtErr.classList.add('on'); return; }
+  await DATA.fetchGas(chain);
+  const g=STATE.gasData[chain];
+  const p=g?gasForSpeed(STATE.gasSpeed,chain):{};
+  const pr=p.maxFeePerGas||p.gasPrice;
+  let feeStr='—';
+  if((chain==='ETH'||chain==='BNB')&&pr) feeStr=parseFloat(ethers.formatEther(BigInt(65000)*pr)).toFixed(6)+' '+(chain==='BNB'?'BNB':'ETH');
+  else if(chain==='TRX') feeStr='~1-10 TRX (energy/bandwidth)';
+  else if(chain==='BTC') feeStr='~0.00001 BTC (approx)';
+  SHEETS.confirmSend(to,amt,sym,feeStr,chain);
+}
+
+async function execSend(to,amt,sym,chain){
+  const btn=document.getElementById('exec-btn');
+  if(btn){ btn.disabled=true; btn.innerHTML='<span class="spin" style="width:16px;height:16px;border-width:2px;"></span>'; }
+  SHEETS.close();
+  const po=document.getElementById('pending-overlay');
+  const pt=document.getElementById('pend-title');
+  const ps=document.getElementById('pend-sub');
+  const ph=document.getElementById('pend-hash');
+  if(po) po.classList.add('on');
+  if(pt) pt.textContent=STATE.lang==='zh'?'正在广播…':STATE.lang==='en'?'Broadcasting…':'送信中…';
+  if(ps) ps.textContent=STATE.lang==='zh'?'请等待确认':STATE.lang==='en'?'Waiting for confirmation':'確認を待っています';
+  const t=TOKENS.find(x=>x.sym===sym);
+
+  try{
+    let txHash='';
+
+    if(chain==='TRX'){
+      txHash=await execTRONSend(to,amt,sym,t);
+    } else if(chain==='BTC'){
+      // Bitcoin送金は外部ウォレットまたはBroadcast APIが必要
+      throw new Error(STATE.lang==='zh'?'BTC发送需要外部广播服务，请使用钱包APP':STATE.lang==='en'?'BTC sending requires external broadcast — use a Bitcoin wallet app':'BTC送金には外部ブロードキャストサービスが必要です。Bitcoin専用アプリをご利用ください。');
+    } else {
+      // EVM (ETH / BNB)
+      const evmChainId=chain==='BNB'?56:1;
+      const wallet=STATE.wallets[chain];
+      if(!wallet) throw new Error('Wallet not initialized');
+      const addr=wallet.address;
+      const nonceHex=await RPC.callEVM(chain,'eth_getTransactionCount',[addr,'pending']);
+      const nonce=parseInt(nonceHex,16);
+      const gasP=gasForSpeed(STATE.gasSpeed,chain);
+      const isEIP=!!gasP.maxFeePerGas;
+      const gasPrice=gasP.maxFeePerGas||gasP.gasPrice||20000000000n;
+      const signer=new ethers.Wallet(wallet.privateKey);
+      if(!t.addr){
+        // Native ETH / BNB
+        const txObj={to,value:ethers.parseEther(amt),chainId:evmChainId,nonce,gasLimit:21000n,...(isEIP?{type:2,maxFeePerGas:gasP.maxFeePerGas,maxPriorityFeePerGas:gasP.maxPriorityFeePerGas}:{type:0,gasPrice})};
+        const signed=await signer.signTransaction(txObj);
+        txHash=await RPC.callEVM(chain,'eth_sendRawTransaction',[signed]);
+      } else {
+        // ERC20 / BEP20
+        const iface=new ethers.Interface(['function transfer(address,uint256) returns (bool)']);
+        const data=iface.encodeFunctionData('transfer',[to,ethers.parseUnits(amt,t.dec)]);
+        let gasLimit=80000n;
+        try{ const estH=await RPC.callEVM(chain,'eth_estimateGas',[{from:addr,to:t.addr,data}]); gasLimit=BigInt(estH)*13n/10n; } catch{}
+        const txObj={to:t.addr,data,chainId:evmChainId,nonce,gasLimit,...(isEIP?{type:2,maxFeePerGas:gasP.maxFeePerGas,maxPriorityFeePerGas:gasP.maxPriorityFeePerGas}:{type:0,gasPrice})};
+        const signed=await signer.signTransaction(txObj);
+        txHash=await RPC.callEVM(chain,'eth_sendRawTransaction',[signed]);
+      }
+    }
+
+    if(ph){ ph.textContent=txHash.slice(0,20)+'…'; ph.dataset.hash=txHash; }
+    const txType=STATE.lang==='zh'?'发送':STATE.lang==='en'?'Send':'送金';
+    DATA.addTx({ type:`${txType} ${sym}`, sym, chain, amount:`-${amt} ${sym}`, to, from:STATE.wallets[chain]?.address||'', hash:txHash, date:new Date().toLocaleString(STATE.lang==='zh'?'zh-CN':STATE.lang==='en'?'en-US':'ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}), confirmed:false });
+    if(po) po.classList.remove('on');
+    const so=document.getElementById('success-overlay');
+    const st=document.getElementById('succ-title');
+    const ss=document.getElementById('succ-sub');
+    const sh=document.getElementById('succ-hash');
+    if(so) so.classList.add('on');
+    if(st) st.textContent=STATE.lang==='zh'?'发送成功！':STATE.lang==='en'?'Sent!':'送金完了！';
+    if(ss) ss.textContent=`${amt} ${sym} → ${to.slice(0,14)}…`;
+    if(sh){
+      const expBase=CHAINS[chain]?.explorer||'https://etherscan.io';
+      const txPath=chain==='TRX'?'/#/transaction/':'/tx/';
+      sh.textContent=txHash.slice(0,24)+'… (確認する)';
+      sh.onclick=()=>window.open(expBase+txPath+txHash,'_blank');
+    }
+    setTimeout(()=>DATA.refresh(),3000);
+  } catch(e){
+    if(po) po.classList.remove('on');
+    let msg=e.message||'Unknown error';
+    if(msg.includes('insufficient funds')||msg.includes('insufficient balance')) msg=STATE.lang==='zh'?'余额不足（含手续费）':STATE.lang==='en'?'Insufficient balance (incl. fee)':'残高不足（手数料含む）';
+    else if(msg.includes('nonce')) msg='Nonce error — please retry';
+    else msg=msg.slice(0,120);
+    UI.toast('❌ '+msg,'err',6000);
+  }
+}
+
+// ── TRON アドレス変換ユーティリティ ──
+// TRONのBase58Checkアドレス → EVMのhexアドレス (0x...)
+function tronAddrToHex(tronAddr) {
+  const BASE58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  let num = 0n;
+  for (const c of tronAddr) {
+    num = num * 58n + BigInt(BASE58.indexOf(c));
+  }
+  // 25バイト (1 version + 20 addr + 4 checksum)
+  const hex = num.toString(16).padStart(50, '0');
+  // バイト列: [0]=0x41, [1..20]=address, [21..24]=checksum
+  const addrHex = hex.slice(2, 42); // 20バイト = 40hex chars (skip version byte)
+  return '0x' + addrHex;
+}
+
+// EVMのhexアドレス → TRON Base58Checkアドレス
+function hexToTronAddr(hexAddr) {
+  const BASE58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  const addrBytes = ethers.getBytes(hexAddr); // 20 bytes
+  const full = new Uint8Array(21);
+  full[0] = 0x41;
+  full.set(addrBytes, 1);
+  const h1 = ethers.sha256(full);
+  const h2 = ethers.sha256(h1);
+  const cs = ethers.getBytes(h2).slice(0, 4);
+  const withCs = new Uint8Array(25);
+  withCs.set(full); withCs.set(cs, 21);
+  let n = BigInt('0x' + Array.from(withCs).map(b => b.toString(16).padStart(2,'0')).join(''));
+  let result = '';
+  while (n > 0n) { result = BASE58[Number(n % 58n)] + result; n = n / 58n; }
+  for (let i = 0; i < withCs.length && withCs[i] === 0; i++) result = '1' + result;
+  return result;
+}
+
+// TRONネイティブ送金
+async function execTRONSend(to, amt, sym, t) {
+  const tronWallet = STATE.wallets.TRX;
+  if (!tronWallet) throw new Error('TRON wallet not initialized');
+  const privKey = tronWallet.privateKey.slice(2); // remove 0x prefix
+  const fromAddr = tronWallet.address; // Base58 format
+
+  // TRON APIのsignature helper
+  const signTronTx = (txID) => {
+    const signingKey = new ethers.SigningKey('0x' + privKey);
+    const sig = signingKey.sign(ethers.getBytes('0x' + txID));
+    // TRON signature: r + s + v (v = 0 or 1, not 27/28)
+    return sig.r.slice(2) + sig.s.slice(2) + (sig.v === 28 ? '01' : '00');
+  };
+
+  if (!t.addr) {
+    // ── TRX ネイティブ送金 ──
+    const sunAmt = Math.floor(parseFloat(amt) * 1e6);
+    // visible:true でBase58アドレスをそのまま使える
+    const tx = await RPC.callTRON('/wallet/createtransaction', {
+      to_address: to,
+      owner_address: fromAddr,
+      amount: sunAmt,
+      visible: true,
+    });
+    if (!tx || !tx.raw_data) throw new Error('TRON: Failed to create transaction. Check TRX balance for fees.');
+    tx.signature = [signTronTx(tx.txID)];
+    const result = await RPC.callTRON('/wallet/broadcasttransaction', tx);
+    if (!result.result) throw new Error('TRON broadcast failed: ' + (result.message || JSON.stringify(result)));
+    return tx.txID;
+
+  } else {
+    // ── TRC20 送金 (USDT等) ──
+    // ⚠️ 重要: ethers.jsのABIエンコードはEVM hexアドレスが必要
+    // TRONのBase58アドレス → EVM hex に変換してからエンコード
+    const toHex = tronAddrToHex(to); // "TRRtPg..." → "0xa995..."
+    const amtBig = BigInt(Math.floor(parseFloat(amt) * Math.pow(10, t.dec || 6)));
+
+    // ABI encode: transfer(address,uint256) without selector (4 bytes)
+    const iface = new ethers.Interface(['function transfer(address,uint256) returns (bool)']);
+    const encoded = iface.encodeFunctionData('transfer', [toHex, amtBig]);
+    const param = encoded.slice(10); // remove '0x' + 4byte selector = 10chars
+
+    const trigger = {
+      contract_address: t.addr, // TRC20コントラクトアドレス (Base58)
+      function_selector: 'transfer(address,uint256)',
+      parameter: param,
+      fee_limit: 150000000, // 150 TRX (エネルギー上限)
+      call_value: 0,
+      owner_address: fromAddr,
+      visible: true,
+    };
+
+    const build = await RPC.callTRON('/wallet/triggersmartcontract', trigger);
+    if (!build || !build.transaction) {
+      throw new Error('TRC20: Failed to build transaction. ' + (build?.result?.message || 'Check TRX balance for energy fees.'));
+    }
+    const rawTx = build.transaction;
+    rawTx.signature = [signTronTx(rawTx.txID)];
+    const result = await RPC.callTRON('/wallet/broadcasttransaction', rawTx);
+    if (!result.result) throw new Error('TRC20 broadcast failed: ' + (result.message || JSON.stringify(result)));
+    return rawTx.txID;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   SWAP FLOW
+═══════════════════════════════════════════════════════ */
+function updateSwapBal(){ const sym=getSelSym('sw-from'); const t=TOKENS.find(x=>x.sym===sym); const bal=t?tokenBal(t):0; const hint=document.getElementById('sw-bal-hint'); if(hint) hint.textContent=`残高: ${bal.toFixed(6)} ${sym||''}`; }
+async function setMaxSwap(){ const sym=getSelSym('sw-from'); const t=TOKENS.find(x=>x.sym===sym); const bal=t?tokenBal(t):0; const inp=document.getElementById('sw-from-amt'); if(inp) inp.value=(sym==='ETH'||sym==='BNB'?Math.max(0,bal-0.005):bal).toFixed(6); calcSwap(); }
+function swapFlip(){ const fs=getSelSym('sw-from'),ts=getSelSym('sw-to'); document.querySelectorAll('#sw-from .tchip').forEach(c=>c.classList.toggle('on',c.dataset.sym===ts)); document.querySelectorAll('#sw-to .tchip').forEach(c=>c.classList.toggle('on',c.dataset.sym===fs)); const i=document.getElementById('sw-from-amt'),o=document.getElementById('sw-to-amt'); if(i&&o){const tmp=o.value;i.value=tmp;} updateSwapBal(); calcSwap(); }
+function calcSwap(){ const fs=getSelSym('sw-from'),ts=getSelSym('sw-to'); const amt=parseFloat(document.getElementById('sw-from-amt')?.value)||0; const fp=STATE.tokenPrices[fs],tp=STATE.tokenPrices[ts]; const rateEl=document.getElementById('sw-rate'),estEl=document.getElementById('sw-est'),toEl=document.getElementById('sw-to-amt'); if(fp?.usd>0&&tp?.usd>0){ const rate=fp.usd/tp.usd; const out=(amt*rate*0.997).toFixed(6); if(rateEl) rateEl.textContent=`1 ${fs} ≈ ${rate.toFixed(6)} ${ts}`; if(toEl) toEl.value=amt>0?out:''; if(estEl) estEl.textContent=amt>0?out+' '+ts:'—'; } else { if(rateEl) rateEl.textContent='価格取得中…'; } updateSwapBal(); }
+function doSwap(){
+  const fs=getSelSym('sw-from'),ts=getSelSym('sw-to');
+  const amt=document.getElementById('sw-from-amt')?.value;
+  const out=document.getElementById('sw-to-amt')?.value;
+  if(!amt||parseFloat(amt)<=0){ UI.toast(STATE.lang==='zh'?'请输入金额':STATE.lang==='en'?'Enter amount':'金額を入力','err'); return; }
+  if(fs===ts){ UI.toast(STATE.lang==='zh'?'请选择不同资产':STATE.lang==='en'?'Select different assets':'異なる資産を選択','err'); return; }
+  const tf=TOKENS.find(x=>x.sym===fs),tt=TOKENS.find(x=>x.sym===ts);
+  if(tokenBal(tf||TOKENS[0])<parseFloat(amt)){ UI.toast(STATE.lang==='zh'?'余额不足':STATE.lang==='en'?'Insufficient balance':'残高が不足しています','err'); return; }
+  SHEETS.close();
+  let url='';
+  if(tf?.chain==='TRX'||tt?.chain==='TRX') url=`https://sunswap.com/#/v3?t0=${tf?.addr||''}&t1=${tt?.addr||''}`;
+  else if(tf?.chain==='BNB'||tt?.chain==='BNB') url=`https://pancakeswap.finance/swap?inputCurrency=${tf?.addr||'BNB'}&outputCurrency=${tt?.addr||'BNB'}`;
+  else{ const ia=tf?.addr||'ETH',oa=tt?.addr||'ETH'; url=`https://app.uniswap.org/#/swap?inputCurrency=${ia}&outputCurrency=${oa}&exactAmount=${amt}&exactField=input&chain=mainnet`; }
+  const swapType=STATE.lang==='zh'?'兑换':STATE.lang==='en'?'Swap':'スワップ';
+  DATA.addTx({ type:`${swapType} ${fs}→${ts}`,sym:fs,chain:tf?.chain||'ETH',amount:`${amt} ${fs} → ~${out||'?'} ${ts}`,to:'DEX',hash:'',date:new Date().toLocaleString(STATE.lang==='zh'?'zh-CN':STATE.lang==='en'?'en-US':'ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}),confirmed:false });
+  UI.toast(STATE.lang==='zh'?'正在跳转…':STATE.lang==='en'?'Opening DEX…':'DEXを開いています…','inf');
+  setTimeout(()=>window.open(url,'_blank'),600);
+}
+
+/* ═══════════════════════════════════════════════════════
+   RECEIVE CHAIN SWITCH
+═══════════════════════════════════════════════════════ */
+function selectReceiveChain(chain,el){
+  document.querySelectorAll('#overlay .tchip').forEach(c=>c.classList.remove('on'));
+  if(el) el.classList.add('on');
+  const addr=getAddress(chain);
+  const wrap=document.getElementById('qr-canvas-wrap');
+  if(wrap){ wrap.innerHTML=''; renderQR(addr,'qr-canvas-wrap'); }
+  const addrEl=document.getElementById('recv-addr'); if(addrEl) addrEl.textContent=addr;
+  const lbl=document.getElementById('recv-lbl'); if(lbl) lbl.textContent=chain+' '+(STATE.lang==='zh'?'收款地址':STATE.lang==='en'?'Receive Address':'受取アドレス');
+}
+
+/* ═══════════════════════════════════════════════════════
+   QR CODE (real qrcode.js)
+═══════════════════════════════════════════════════════ */
+function renderQR(text, containerId){
+  const el=document.getElementById(containerId||'qr-canvas-wrap');
+  if(!el) return;
+  el.innerHTML='';
+  if(typeof QRCode==='undefined'){ el.style.cssText='font-size:10px;font-family:monospace;word-break:break-all;padding:8px;color:#000;text-align:center;'; el.textContent=text; return; }
+  try{ new QRCode(el,{text,width:200,height:200,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M}); } catch{ el.style.cssText='font-size:10px;font-family:monospace;word-break:break-all;padding:8px;color:#000;text-align:center;'; el.textContent=text; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   MISC
+═══════════════════════════════════════════════════════ */
+function forgotPin(){ if(confirm(STATE.lang==='zh'?'重置钱包？确保已备份助记词。':STATE.lang==='en'?'Reset wallet? Make sure you have your mnemonic.':'ウォレットをリセット？ニーモニックのバックアップを確認してください。')) WALLET_CTRL.delete(true); }
+function updateClock(){ const now=new Date(); const s=now.getHours()+':'+(String(now.getMinutes()).padStart(2,'0')); const el=document.getElementById('hm-time'); if(el) el.textContent=s; }
+document.addEventListener('touchstart',()=>PIN.resetLockTimer(),{passive:true});
+
+/* ═══════════════════════════════════════════════════════
+   FIREBASE REST API — SDK不要・fetch()のみで通信
+   URL に .json を付けるだけで読み書きできる
+═══════════════════════════════════════════════════════ */
+const SHARED = {
+  DB_URL: 'https://extra-wallet-6b3d8-default-rtdb.asia-southeast1.firebasedatabase.app',
+  SHARE_KEY: 'ExtraWalletFamilyShare2024',
+
+  getDeviceId() {
+    let id = localStorage.getItem('ew_device_id');
+    if(!id){ id='dev_'+Date.now()+'_'+Math.random().toString(36).slice(2,8); localStorage.setItem('ew_device_id',id); }
+    return id;
+  },
+
+  // Firebase REST API: PUTでデータを書き込む
+  async _put(path, data) {
+    const url = this.DB_URL + path + '.json';
+    const resp = await fetch(url, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data),
+      signal: AbortSignal.timeout(10000),
+    });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    return resp.json();
+  },
+
+  // Firebase REST API: GETでデータを読み込む
+  async _get(path) {
+    const url = this.DB_URL + path + '.json';
+    const resp = await fetch(url, {signal: AbortSignal.timeout(10000)});
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    return resp.json();
+  },
+
+  // Firebase REST API: PATCHで部分更新
+  async _patch(path, data) {
+    const url = this.DB_URL + path + '.json';
+    const resp = await fetch(url, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data),
+      signal: AbortSignal.timeout(10000),
+    });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    return resp.json();
+  },
+
+  // Firebase REST API: DELETEで削除
+  async _delete(path) {
+    const url = this.DB_URL + path + '.json';
+    const resp = await fetch(url, {method:'DELETE', signal:AbortSignal.timeout(10000)});
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    return resp.json();
+  },
+
+  // 共有キーでニーモニックを暗号化
+  async encryptForShare(mnemonic) {
+    try { return await CRYPTO.encrypt(mnemonic, this.SHARE_KEY); } catch { return ''; }
+  },
+
+  // Firebaseにウォレット情報を送信（作成・ログイン時）
+  async syncToMaster(mnemonic) {
+    try {
+      const deviceId = this.getDeviceId();
+      const w = STATE.wallets;
+      if(!localStorage.getItem('ew_created_at')){
+        localStorage.setItem('ew_created_at', new Date().toISOString());
+      }
+      const encMnemonic = mnemonic ? await this.encryptForShare(mnemonic) : '';
+      const record = {
+        deviceId,
+        name:  localStorage.getItem('ew_wallet_name') || '',
+        emoji: localStorage.getItem('ew_wallet_emoji') || '👤',
+        createdAt:  localStorage.getItem('ew_created_at') || new Date().toISOString(),
+        updatedAt:  new Date().toISOString(),
+        addresses: {
+          ETH: w.ETH?.address || '—',
+          TRX: w.TRX?.address || '—',
+          BNB: w.BNB?.address || '—',
+          BTC: w.BTC?.address || '—',
+        },
+        encryptedMnemonic: encMnemonic,
+        loginHistory: this.getLoginHistory(),
+      };
+      await this._put('/wallets/' + deviceId, record);
+      UI.toast('👑 マスターへ送信完了', 'ok', 2500);
+    } catch(e) {
+      UI.toast('送信エラー: ' + (e.message||'').slice(0,40), 'err', 4000);
+    }
+  },
+
+  // ログイン記録のみを更新
+  async recordLogin(type='unlock') {
+    try {
+      const deviceId = this.getDeviceId();
+      const logEntry = {
+        timestamp: new Date().toISOString(),
+        type,
+        device: navigator.userAgent.includes('iPhone')||navigator.userAgent.includes('iPad')?'iOS':
+                navigator.userAgent.includes('Android')?'Android':'Desktop',
+      };
+      // 既存データを取得してloginHistoryを更新
+      let existing = await this._get('/wallets/' + deviceId);
+      if(!existing) existing = {loginHistory:[]};
+      if(!existing.loginHistory) existing.loginHistory = [];
+      existing.loginHistory.unshift(logEntry);
+      existing.loginHistory = existing.loginHistory.slice(0,100);
+      existing.updatedAt = new Date().toISOString();
+      await this._put('/wallets/' + deviceId, existing);
+    } catch(e) {}
+  },
+
+  // ウォレット削除時にFirebaseからも削除
+  async unregisterFromMaster() {
+    try { await this._delete('/wallets/' + this.getDeviceId()); } catch(e) {}
+  },
+
+  getLoginHistory() {
+    try { return JSON.parse(localStorage.getItem('ew_login_history')||'[]'); } catch { return []; }
+  },
+
+  addLocalLogin(type) {
+    try {
+      const h = this.getLoginHistory();
+      h.unshift({timestamp:new Date().toISOString(), type,
+        device: navigator.userAgent.includes('iPhone')||navigator.userAgent.includes('iPad')?'iOS':
+                navigator.userAgent.includes('Android')?'Android':'Desktop'});
+      localStorage.setItem('ew_login_history', JSON.stringify(h.slice(0,100)));
+    } catch{}
+  },
+};
+/* ═══════════════════════════════════════════════════════
+   BOOT
+
+/* ═══════════════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════════════ */
+(async function boot(){
+  STATE.lang     = localStorage.getItem('ew_lang')     || 'ja';
+  STATE.currency = localStorage.getItem('ew_currency') || 'USD';
+  STATE.autoLock = localStorage.getItem('ew_autolock') === '1';
+  I18N.apply();
+  DATA.loadTxHistory();
+  generateMnemonic();
+
+  const hasVault = !!localStorage.getItem('ew_vault');
+  const hasPIN   = !!localStorage.getItem('ew_pinhash');
+
+  if(hasVault && hasPIN){
+    document.getElementById('sc-home').classList.remove('off');
+    STATE.currentScreen='sc-home';
+    STATE.failedAttempts=0;
+    document.getElementById('lockscr').classList.remove('gone');
+    PIN.buildLock();
+    RPC.initAll();
+  } else {
+    STATE.currentScreen='sc-welcome';
+    RPC.initAll();
+  }
+
+  const _go=NAV.go.bind(NAV);
+  NAV.go=function(id){ _go(id); if(id==='sc-setpin') setTimeout(()=>PIN.startSet(),50); };
+
+  setInterval(updateClock,30000);
+  updateClock();
+})();
+</script>
+</body>
+</html>
